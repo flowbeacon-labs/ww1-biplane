@@ -3,7 +3,7 @@
 <title>Wings of 1918 — WWI Flight Simulator</title><link rel="stylesheet" href="style.css?v=1"></head>
 <body><main id="app"><canvas id="flight" aria-label="3D World War I aircraft flying over an airfield"></canvas>
 <div id="hud" class="hud">
-<header class="top"><a class="home" href="https://flowbeacon-labs.github.io/flowbeacon-arcade/" aria-label="Return to Flowbeacon Arcade">← Arcade</a><div class="brand"><b>WINGS OF 1918</b><small>FLIGHT SCHOOL · PHASE 1</small></div><button id="camera" title="Switch camera" aria-label="Switch camera view">CAMERA <span id="camName">CHASE</span></button></header>
+<header class="top"><a class="home" href="https://flowbeacon-labs.github.io/flowbeacon-arcade/" aria-label="Return to Flowbeacon Arcade">← Arcade</a><div class="brand"><b>WINGS OF 1918</b><small>FLIGHT SCHOOL · PHASE 1</small></div><button id="camera" title="Switch between chase, close-up and cockpit cameras" aria-label="Switch camera view">CAMERA <span id="camName">CHASE</span></button></header>
 <div class="gauges">
  <div class="gauge"><span>AIRSPEED</span><strong><output id="speed">0</output></strong><small>km/h (simulated)</small></div>
  <div class="gauge"><span>ALTITUDE</span><strong><output id="alt">0</output></strong><small>metres AGL</small></div>
@@ -25,4 +25,4 @@
 <div class="menu-actions"><button id="start" class="start">START FLIGHT →</button><a href="https://flowbeacon-labs.github.io/flowbeacon-arcade/" class="secondary">← Main Arcade</a></div>
 <div class="instructions"><b>Flight controls</b><p>Keyboard: <kbd>↑</kbd> throttle up, <kbd>↓</kbd> throttle down, <kbd>W/S</kbd> pitch, <kbd>A/D</kbd> bank, <kbd>Q/E</kbd> rudder, <kbd>Space</kbd> brake, <kbd>C</kbd> camera, <kbd>R</kbd> restart, <kbd>Esc</kbd> pause. On iPhone, hold the onscreen controls.</p><p>Fly at a safe speed before pulling back gently. Reduce throttle, level the wings and descend slowly for a successful landing. Flight physics and aircraft shapes are game approximations, not engineering-grade simulations.</p></div>
 </div></section>
-<div id="error" class="error" hidden role="alert"></div></main><script src="game.js?v=1" defer></script></body></html>
+<div id="error" class="error" hidden role="alert"></div></main><script src="game.js?v=2-visible-aircraft" defer></script></body></html>
