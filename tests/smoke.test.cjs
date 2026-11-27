@@ -13,7 +13,7 @@ function boot() {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,notifyLanding};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -146,4 +146,46 @@ test('Flight statistics start collapsed and can be toggled without stopping flig
  assert.equal(element('app').classList.contains('stats-open'),false);
  assert.equal(toggle.textContent,'STATS');
  assert.equal(element('menu').hidden,true);
+});
+
+test('Four separate airstrips have marked touchdown zones',()=>{
+ const {game}=boot();
+ assert.equal(game.RUNWAYS.length,4);
+ const ids=game.RUNWAYS.map(s=>s.id);
+ assert.equal(new Set(ids).size,4);
+ for(const strip of game.RUNWAYS){
+   assert.equal(game.runwayAt(strip.x,strip.z).id,strip.id);
+   assert.ok(strip.length>=300);
+   assert.ok(strip.width>=26);
+ }
+ assert.equal(game.runwayAt(250,0),null);
+});
+
+test('Nearby-airstrip guidance chooses the nearest strip',()=>{
+ const {game,element}=boot();
+ const west=game.RUNWAYS.find(s=>s.id==='west');
+ Object.assign(game.state,{x:west.x+2,z:west.z+5});
+ game.begin();
+ Object.assign(game.state,{x:west.x+2,z:west.z+5});
+ game.flightTick(.05);
+ assert.equal(game.nearestRunway(game.state.x,game.state.z).strip.id,'west');
+ assert.match(element('nearestStrip').textContent,/Western Meadow Strip/);
+});
+
+test('Mission rewards require touchdown on a marked runway, not random grass',()=>{
+ const {game}=boot();game.begin();
+ game.state.y=85;game.flightTick(.1);assert.equal(game.status().missionStage,1);
+ // Mark the aircraft airborne through the normal mission update.
+ game.flightTick(.1);
+ const originalLandings=game.career.landings;
+ Object.assign(game.state,{x:250,z:0,y:.48});
+ game.notifyLanding(true);
+ assert.equal(game.career.landings,originalLandings);
+ assert.equal(game.status().missionFinished,false);
+ // A new safe runway touchdown completes the solo mission.
+ game.state.y=85;game.flightTick(.1);
+ Object.assign(game.state,{x:-560,z:-310,y:.48});
+ game.notifyLanding(true);
+ assert.equal(game.status().missionFinished,true);
+ assert.equal(game.career.landings,originalLandings+1);
 });
