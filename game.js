@@ -9,7 +9,9 @@ const planes=[
 {name:'Nieuport 17',country:'France',flag:'🇫🇷',year:1916,span:8.2,body:5.9,levels:2,color:'#b2a891',wing:'#d5cbb7',trim:'#e9d6b0',mark:'round',max:50,stall:18,accel:9.4,details:'French sesquiplane, modeled with a visibly narrower lower wing.'},
 {name:'Albatros D.Va',country:'Germany',flag:'🇩🇪',year:1917,span:9.0,body:7.3,levels:2,color:'#985a37',wing:'#7c946d',trim:'#ecd5ac',mark:'cross',max:55,stall:21,accel:10.5,details:'German wooden-bodied scout with a tapered fuselage and swept tail.'},
 {name:'Ansaldo SVA.5',country:'Italy',flag:'🇮🇹',year:1918,span:9.1,body:8.1,levels:2,color:'#b69a68',wing:'#d1bf92',trim:'#f2e1b6',mark:'italy',max:63,stall:24,accel:11,details:'Italian high-speed reconnaissance aircraft with an elongated fuselage.'},
-{name:'Curtiss JN-4 Jenny',country:'United States',flag:'🇺🇸',year:1915,span:13.3,body:8.3,levels:2,color:'#c0a778',wing:'#dfcead',trim:'#fff0ce',mark:'usa',max:41,stall:16,accel:8.8,details:'American training biplane with broad wings and easy low-speed handling.'}
+{name:'Curtiss JN-4 Jenny',country:'United States',flag:'🇺🇸',year:1915,span:13.3,body:8.3,levels:2,color:'#c0a778',wing:'#dfcead',trim:'#fff0ce',mark:'usa',max:41,stall:16,accel:8.8,details:'American training biplane with broad wings and easy low-speed handling.'},
+{name:'Royal Aircraft Factory S.E.5a',country:'United Kingdom',flag:'🇬🇧',year:1917,span:8.1,body:6.4,levels:2,color:'#56664c',wing:'#71826b',trim:'#ece1b9',mark:'round',max:61,stall:23,accel:11,unlock:600,details:'Unlockable British fighter renowned for stability and speed.'},
+{name:'Fokker D.VII',country:'Germany',flag:'🇩🇪',year:1918,span:8.9,body:7.0,levels:2,color:'#416d62',wing:'#789a82',trim:'#e1d7a8',mark:'cross',max:58,stall:20,accel:11.2,unlock:1100,details:'Unlockable German late-war biplane with distinctive broad wings.'}
 ];
 const hex=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)/255);
 const D={grass:[.27,.43,.27],patch:[.32,.49,.31],strip:[.55,.54,.43],white:[.94,.92,.81],wood:[.49,.35,.23],steel:[.41,.43,.42],black:[.09,.09,.10],gold:[.84,.73,.40],red:[.8,.22,.16],blue:[.18,.31,.68],green:[.25,.54,.28]};
@@ -128,6 +130,7 @@ function refreshCareer(){
  $('careerSummary').textContent=career.missionsCompleted+' of '+missions.length+' missions completed · '+career.medals+' medals · '+career.landings+' landings';
  $('missions').innerHTML=missions.map((m,i)=>'<button class="mission-choice" data-mission="'+i+'" aria-pressed="'+(i===selectedMission)+'"><strong>'+(i+1)+'. '+m.name+'</strong><small>'+m.description+'</small><em>'+(career.completed[m.id]?'✓ Completed · Best '+(career.best[m.id]||0):'Reward '+m.award+' XP')+'</em></button>').join('');
  document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>{selectedMission=+b.dataset.mission;refreshCareer();$('missionNumber').textContent=selectedMission+1;$('missionHeading').textContent=missions[selectedMission].name});
+ document.querySelectorAll('.plane').forEach(b=>{const p=planes[Number(b.dataset.index)];if(p?.unlock)b.setAttribute('aria-label',career.xp>=p.unlock?p.name+' unlocked':p.name+' locked until '+p.unlock+' XP')});
 }
 function setLivery(){
  // Paint options are intentionally visual via material tint, while the plane geometry remains unchanged.
@@ -157,9 +160,9 @@ function setupMission(){
 }
 function formatTime(seconds){const n=Math.max(0,Math.floor(seconds));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
 function currentTarget(){
- if(selectedMission===1||selectedMission===3)return checkpoints[Math.min(missionIndex,checkpoints.length-1)];
- if(selectedMission===2)return landmarks[missionIndex]?[landmarks[missionIndex].x,landmarks[missionIndex].y,landmarks[missionIndex].z]:null;
- if(selectedMission===5)return bots.find(b=>!b.friendly&&b.hp>0)?[bots[0].x,bots[0].y,bots[0].z]:[0,40,0];
+ if(selectedMission===1||selectedMission===3)return missionIndex>=(selectedMission===3?5:checkpoints.length)?[0,5,-140]:checkpoints[missionIndex];
+ if(selectedMission===2)return landmarks[missionIndex]?[landmarks[missionIndex].x,landmarks[missionIndex].y,landmarks[missionIndex].z]:[0,5,-140];
+ if(selectedMission===5)return bots.find(b=>!b.friendly&&b.hp>0)?[bots[0].x,bots[0].y,bots[0].z]:[0,5,-140];
  return null;
 }
 function objectiveText(){
@@ -286,8 +289,8 @@ const fsource='precision mediump float;varying vec3 vCol;varying float fog;void 
 const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vsource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fsource));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
 const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k));
 function draw(mesh,mat,view,proj,eye){mesh.upload();for(const [loc,m] of [[uniforms[0],mat],[uniforms[1],view],[uniforms[2],proj]])gl.uniformMatrix4fv(loc,false,new Float32Array(m));gl.uniform3fv(uniforms[3],new Float32Array(eye));mesh.buf.forEach((b,i)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(attributes[i]);gl.vertexAttribPointer(attributes[i],3,gl.FLOAT,false,0,0)});gl.drawArrays(gl.TRIANGLES,0,mesh.count)}
-function choose(i){selected=i;model=makeAircraft(planes[i]);setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
-$('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+'</small></button>').join('');
+function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}selected=i;model=makeAircraft(planes[i]);setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
+$('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+(p.unlock?' · '+p.unlock+' XP unlock':'')+'</small></button>').join('');
 document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>choose(+b.dataset.index)));choose(0);
 function announce(t){$('notice').textContent=t}
 function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});setupMission();snapCamera();grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
