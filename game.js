@@ -95,7 +95,7 @@ function cleanCareer(value){
 }
 function loadCareer(){try{return cleanCareer(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'))}catch{return fallbackProgress()}}
 let career=loadCareer(),selectedMission=0,missionTime=0,missionScore=0,missionStage=0,missionIndex=0,missionFinished=false,airborne=false,damage=100,fuel=100,trainingShots=0,photoDone=new Set(),formationClock=0,weatherClock=0,fireCooldown=0,smokeTime=0,missionMarks=[],missionRender=[],enemyDefeated=false;
-let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0;
+let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
 const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,color:'#b8c8d0'}],bots=[];
 const aiShape=makeAircraft(planes[3]),enemyShape=makeAircraft(planes[1]);
 const markerMeshes=(()=>{const ring=new Mesh(),gold=D.gold;for(let i=0;i<40;i++){const a=i*TAU/40,b=(i+1)*TAU/40;ring.tube([Math.cos(a)*10,Math.sin(a)*10,0],[Math.cos(b)*10,Math.sin(b)*10,0],.58,i%2?D.white:gold,5)}
@@ -129,7 +129,7 @@ function refreshCareer(){
  $('pilotRank').textContent=rankTitle();$('pilotXp').textContent=career.xp+' XP';
  $('careerSummary').textContent=career.missionsCompleted+' of '+missions.length+' missions completed · '+career.medals+' medals · '+career.landings+' landings';
  $('missions').innerHTML=missions.map((m,i)=>'<button class="mission-choice" data-mission="'+i+'" aria-pressed="'+(i===selectedMission)+'"><strong>'+(i+1)+'. '+m.name+'</strong><small>'+m.description+'</small><em>'+(career.completed[m.id]?'✓ Completed · Best '+(career.best[m.id]||0):'Reward '+m.award+' XP')+'</em></button>').join('');
- document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>{selectedMission=+b.dataset.mission;refreshCareer();$('missionNumber').textContent=selectedMission+1;$('missionHeading').textContent=missions[selectedMission].name});
+ document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>{if(selectedMission!==+b.dataset.mission)missionPending=true;selectedMission=+b.dataset.mission;refreshCareer();$('missionNumber').textContent=selectedMission+1;$('missionHeading').textContent=missions[selectedMission].name});
  document.querySelectorAll('.plane').forEach(b=>{const p=planes[Number(b.dataset.index)];if(p?.unlock)b.setAttribute('aria-label',career.xp>=p.unlock?p.name+' unlocked':p.name+' locked until '+p.unlock+' XP')});
 }
 function setLivery(){
@@ -262,6 +262,13 @@ function shoot(){
 $('fire').addEventListener('click',shoot);$('photo').addEventListener('click',takePhoto);
 $('exportSave').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(cleanCareer(career),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='wings-of-1918-pilot.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200)});
 $('importSave').addEventListener('click',()=>$('importFile').click());
+$('resetCareer').addEventListener('click',()=>{
+ if(!window.confirm('Delete saved ranks, XP, medals and mission records on this device? This cannot be undone without an exported backup.'))return;
+ career=fallbackProgress();difficulty='arcade';weather='clear';paintScheme='classic';
+ for(const id of ['difficulty','weather','livery'])$(id).value=career.settings[id];
+ saveCareer();selectedMission=0;missionPending=true;choose(0);
+ announce('Pilot career reset. Export a backup before resetting next time.');
+});
 $('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;for(const id of ['difficulty','weather','livery'])$(id).value=career.settings[id];saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
@@ -289,14 +296,14 @@ const fsource='precision mediump float;varying vec3 vCol;varying float fog;void 
 const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vsource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fsource));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
 const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k));
 function draw(mesh,mat,view,proj,eye){mesh.upload();for(const [loc,m] of [[uniforms[0],mat],[uniforms[1],view],[uniforms[2],proj]])gl.uniformMatrix4fv(loc,false,new Float32Array(m));gl.uniform3fv(uniforms[3],new Float32Array(eye));mesh.buf.forEach((b,i)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(attributes[i]);gl.vertexAttribPointer(attributes[i],3,gl.FLOAT,false,0,0)});gl.drawArrays(gl.TRIANGLES,0,mesh.count)}
-function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}selected=i;model=makeAircraft(planes[i]);setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
+function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}if(selected!==i)planePending=true;selected=i;model=makeAircraft(planes[i]);setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
 $('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+(p.unlock?' · '+p.unlock+' XP unlock':'')+'</small></button>').join('');
 document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>choose(+b.dataset.index)));choose(0);
 function announce(t){$('notice').textContent=t}
 function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});setupMission();snapCamera();grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
 let last=performance.now();
-function begin(){reset();career.flights++;saveCareer();active=true;paused=false;$('menu').hidden=true;$('start').textContent='RESUME FLIGHT →';last=performance.now()}
-$('start').addEventListener('click',()=>{if(active&&paused&&!crashed){paused=false;$('menu').hidden=true;last=performance.now()}else begin()});
+function begin(){reset();missionPending=false;planePending=false;career.flights++;saveCareer();active=true;paused=false;$('menu').hidden=true;$('start').textContent='RESUME FLIGHT →';last=performance.now()}
+$('start').addEventListener('click',()=>{if(active&&paused&&!crashed&&!missionPending&&!planePending){paused=false;$('menu').hidden=true;last=performance.now()}else begin()});
 function pause(){if(!active)return;paused=!paused;$('menu').hidden=!paused;$('start').textContent=paused?'RESUME FLIGHT →':'START FLIGHT →'}
 $('camera').addEventListener('click',()=>{camera=(camera+1)%3;snapCamera();$('camName').textContent=['CHASE','CLOSE','COCKPIT'][camera]});
 const keyMap={KeyW:'w',KeyS:'s',KeyA:'a',KeyD:'d',KeyQ:'q',KeyE:'e',ArrowUp:'up',ArrowDown:'down'};
