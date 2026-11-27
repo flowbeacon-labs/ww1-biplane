@@ -18,3 +18,10 @@
 #legacyTouch{display:none!important}
 @media(pointer:coarse){#touch{align-items:flex-end}.flight-actions{bottom:118px}.flight-radar{width:82px;height:82px;top:235px;right:10px}}
 @media(max-width:680px){.mission-hud{padding:7px;margin-top:5px}.mission-hud strong{font-size:12px}.mission-hud p{font-size:10px}.mission-right{gap:4px;flex-wrap:wrap;justify-content:flex-end}.mission-right button{padding:6px;font-size:9px}.flight-info span{font-size:8px;padding:4px}.flight-radar{top:215px;width:70px;height:70px}.flight-actions{bottom:102px;right:6px;gap:3px}.flight-actions button{font-size:9px;padding:9px 6px}#joyArea{flex-basis:100px;height:100px}#joyBase{width:94px;height:94px}.touch-actions button{min-width:38px}.mission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mission-choice{padding:8px;min-height:105px}}
+
+/* Weather overlays are decorative only; flight handling comes from the physics loop. */
+#weatherOverlay{position:absolute;inset:0;pointer-events:none;z-index:1;opacity:0;transition:opacity .4s}
+#app[data-weather="storm"] #weatherOverlay{opacity:.48;background:repeating-linear-gradient(105deg,transparent 0 19px,#d6e8ef88 20px 21px,transparent 22px 38px);background-size:43px 80px;animation:flightRain .65s linear infinite}
+#app[data-weather="breezy"] #weatherOverlay{opacity:.09;background:linear-gradient(120deg,transparent 25%,#ffffff88 48%,transparent 70%)}
+@keyframes flightRain{to{background-position:-44px 160px}}
+@media(prefers-reduced-motion:reduce){#app[data-weather="storm"] #weatherOverlay{animation:none}}
