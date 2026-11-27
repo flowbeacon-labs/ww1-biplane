@@ -93,7 +93,7 @@ function cleanCareer(value){
 }
 function loadCareer(){try{return cleanCareer(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'))}catch{return fallbackProgress()}}
 let career=loadCareer(),selectedMission=0,missionTime=0,missionScore=0,missionStage=0,missionIndex=0,missionFinished=false,airborne=false,damage=100,fuel=100,trainingShots=0,photoDone=new Set(),formationClock=0,weatherClock=0,fireCooldown=0,smokeTime=0,missionMarks=[],missionRender=[],enemyDefeated=false;
-let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,windClock=0,joystick={x:0,y:0},joystickPointer=null;
+let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0;
 const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,color:'#b8c8d0'}],bots=[];
 const aiShape=makeAircraft(planes[3]),enemyShape=makeAircraft(planes[1]);
 const markerMeshes=(()=>{const ring=new Mesh(),gold=D.gold;for(let i=0;i<40;i++){const a=i*TAU/40,b=(i+1)*TAU/40;ring.tube([Math.cos(a)*10,Math.sin(a)*10,0],[Math.cos(b)*10,Math.sin(b)*10,0],.58,i%2?D.white:gold,5)}
@@ -114,6 +114,11 @@ const worldObjects=(()=>{const m=new Mesh();const r=()=>Math.random();
  // A few farms and roads.
  m.box(-250,.02,400,12,.04,360,D.strip);m.box(250,.02,-320,10,.04,260,D.strip);
  for(const [x,z] of [[-230,480],[230,-385],[450,-30],[-480,-80]]){m.box(x,5,z,24,10,20,D.wood);m.box(x,11,z,28,2,24,D.red)}
+ // Layered clouds create visible sky landmarks at different altitudes.
+ for(const [x,y,z] of [[-150,170,120],[140,190,310],[-370,200,-200],[390,170,-140],[-70,230,510],[470,235,405],[-510,210,420]]){
+  const cloud=[.89,.92,.95];m.box(x,y,z,50,11,25,cloud);
+  m.box(x-19,y+5,z,33,13,27,cloud);m.box(x+13,y+7,z,30,17,28,D.white);
+ }
  return m;
 })();
 function saveCareer(){career.settings={difficulty,weather,livery:paintScheme};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
@@ -140,7 +145,7 @@ for(const id of ['difficulty','weather','livery']){$(id).value=career.settings[i
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
 function setupMission(){
- missionTime=0;missionScore=0;missionStage=0;missionIndex=0;missionFinished=false;airborne=false;photoDone.clear();formationClock=0;enemyDefeated=false;trainingShots=0;damage=100;fuel=100;fireCooldown=0;smokeTime=0;windClock=0;
+ missionTime=0;missionScore=0;missionStage=0;missionIndex=0;missionFinished=false;airborne=false;photoDone.clear();formationClock=0;enemyDefeated=false;trainingShots=0;damage=100;fuel=100;fireCooldown=0;smokeTime=0;windClock=0;enemyFireClock=0;
  $('missionHeading').textContent=missions[selectedMission].name;
  $('missionNumber').textContent=selectedMission+1;
  $('crosshair').hidden=selectedMission!==5;
@@ -224,6 +229,11 @@ function flightTick(dt){
   if(b.friendly){const t=checkpoints[Math.min(missionIndex,4)];const f=Math.min(1,dt*.8),shift=b.x<0?-22:22;
    b.x=mix(b.x,t[0]+shift,f);b.z=mix(b.z,t[2]-30,f);b.y=mix(b.y,t[1],f)}
   else{b.x=80*Math.sin(b.phase*.45);b.z=205+70*Math.cos(b.phase*.45);b.y=95+11*Math.sin(b.phase*.8)}
+ }
+ if(selectedMission===5&&bots[0]?.hp>0&&!grounded){
+  const enemy=bots[0],dist=Math.hypot(enemy.x-state.x,enemy.y-state.y,enemy.z-state.z);
+  enemyFireClock+=dt;
+  if(dist<150&&enemyFireClock>3.5){enemyFireClock=0;damage=Math.max(0,damage-(difficulty==='arcade'?3:difficulty==='balanced'?6:10));announce('Enemy practice fire! Hull integrity '+Math.round(damage)+'%.');}
  }
  if(selectedMission===5&&!enemyDefeated&&bots[0]?.hp<=0){enemyDefeated=true;grant(180);announce('Training opponent disabled! Return to base.')}
  if(damage<=0){crashed=true;announce('Aircraft critically damaged. Restart the mission.')}
@@ -356,6 +366,12 @@ draw(field,identity(),view,proj,camEye);
   const shape=bot.friendly?aiShape:enemyShape,botMat=multiply(move(bot.x,bot.y,bot.z),yaw(bot.phase*.24));
   draw(shape.mesh,botMat,view,proj,camEye);
   draw(shape.prop,multiply(botMat,move(...shape.offset)),view,proj,camEye);
+  if(bot.hp<50&&!bot.friendly){
+   // Low-poly dark plume communicates a damaged aircraft at a distance.
+   const smokeMesh=markerMeshes.ring;
+   const plume=move(bot.x,bot.y+6+Math.sin(bot.phase*3)*2,bot.z-8);
+   draw(smokeMesh,multiply(plume,roll(Math.PI/2)),view,proj,camEye);
+  }
  }
 const orientation=multiply(yaw(state.yaw),multiply(pitch(-state.pitch),roll(-state.roll))),base=multiply(move(...pos),orientation);
 draw(model.mesh,base,view,proj,camEye);draw(model.prop,multiply(base,multiply(move(...model.offset),roll(propAngle))),view,proj,camEye)
