@@ -53,3 +53,7 @@
  #app.stats-open .flight-radar{width:66px;height:66px;top:205px;right:6px}
  .mission-hud{max-width:min(480px,100%);background:#0a1c31b8;border-color:#e5d29866}
 }
+
+/* Nearby landing fields: small navigation cue with no bulky instrument panel. */
+.runway-guide{margin-top:5px;align-self:flex-start;background:#13354aca;color:#ffe4a1;font-size:11px;font-weight:800;line-height:1.2;padding:6px 9px;border:1px solid #fff2b344;border-radius:8px;max-width:min(410px,90%);white-space:normal}
+@media(max-width:680px){.runway-guide{font-size:9px;padding:4px 7px;margin-top:3px;max-width:80%}}
