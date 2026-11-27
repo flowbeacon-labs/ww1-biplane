@@ -19,7 +19,7 @@ function boot() {
   const elements = new Map();
   function element(id) {
     if (!elements.has(id)) elements.set(id, {
-      id, hidden:false, disabled:false, innerHTML:'', textContent:'',
+      id, hidden:false, disabled:false, dataset:{}, innerHTML:'', textContent:'',
       value:({difficulty:'arcade',weather:'clear',livery:'classic'})[id]||'',
       files:[],
       style:{width:'',transform:''},
