@@ -391,11 +391,11 @@ function roll(a){const c=Math.cos(a),s=Math.sin(a);return[c,s,0,0,-s,c,0,0,0,0,1
 function projection(fovy,aspect,near,far){const f=1/Math.tan(fovy/2);return[f/aspect,0,0,0,0,f,0,0,0,0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0]}
 function viewMatrix(eye,target){const f=unit(sub(target,eye)),r=unit(cross([0,1,0],f)),u=cross(f,r);return[r[0],u[0],-f[0],0,r[1],u[1],-f[1],0,r[2],u[2],-f[2],0,-dot(r,eye),-dot(u,eye),dot(f,eye),1]}
 function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s}
-const vsource='attribute vec3 aPos,aNrm,aCol;uniform mat4 uModel,uView,uProj;uniform vec3 uEye;uniform float uDusk;varying vec3 vCol;varying float fog;void main(){vec4 pos=uModel*vec4(aPos,1.);vec3 n=normalize(mat3(uModel)*aNrm);float day=max(0.,dot(n,normalize(vec3(-.44,.83,.3))));float dusk=max(0.,dot(n,normalize(vec3(-.85,.43,.25))));float l=mix(.59+.41*day,.37+.44*dusk,uDusk);vCol=aCol*l;fog=clamp((distance(pos.xyz,uEye)-210.)/950.,0.,1.);gl_Position=uProj*uView*pos;}';
+const vsource='attribute vec3 aPos,aNrm,aCol;uniform mat4 uModel,uView,uProj;uniform vec3 uEye;uniform float uDusk;uniform float uEmissive;varying vec3 vCol;varying float fog;void main(){vec4 pos=uModel*vec4(aPos,1.);vec3 n=normalize(mat3(uModel)*aNrm);float day=max(0.,dot(n,normalize(vec3(-.44,.83,.3))));float dusk=max(0.,dot(n,normalize(vec3(-.85,.43,.25))));float l=mix(.59+.41*day,.37+.44*dusk,uDusk);vCol=mix(aCol*l,aCol,uEmissive);fog=clamp((distance(pos.xyz,uEye)-210.)/950.,0.,1.);gl_Position=uProj*uView*pos;}';
 const fsource='precision mediump float;uniform float uDusk;varying vec3 vCol;varying float fog;void main(){vec3 haze=mix(vec3(.65,.78,.84),vec3(.84,.56,.47),uDusk);gl_FragColor=vec4(mix(vCol,haze,fog),1.);}';
 const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vsource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fsource));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
-const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k)),duskUniform=gl.getUniformLocation(program,'uDusk');
-function draw(mesh,mat,view,proj,eye){mesh.upload();for(const [loc,m] of [[uniforms[0],mat],[uniforms[1],view],[uniforms[2],proj]])gl.uniformMatrix4fv(loc,false,new Float32Array(m));gl.uniform3fv(uniforms[3],new Float32Array(eye));mesh.buf.forEach((b,i)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(attributes[i]);gl.vertexAttribPointer(attributes[i],3,gl.FLOAT,false,0,0)});gl.drawArrays(gl.TRIANGLES,0,mesh.count)}
+const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k)),duskUniform=gl.getUniformLocation(program,'uDusk'),emissiveUniform=gl.getUniformLocation(program,'uEmissive');
+function draw(mesh,mat,view,proj,eye,unlit=false){mesh.upload();gl.uniform1f(emissiveUniform,unlit?1:0);for(const [loc,m] of [[uniforms[0],mat],[uniforms[1],view],[uniforms[2],proj]])gl.uniformMatrix4fv(loc,false,new Float32Array(m));gl.uniform3fv(uniforms[3],new Float32Array(eye));mesh.buf.forEach((b,i)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(attributes[i]);gl.vertexAttribPointer(attributes[i],3,gl.FLOAT,false,0,0)});gl.drawArrays(gl.TRIANGLES,0,mesh.count)}
 function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}if(selected!==i)planePending=true;selected=i;setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
 $('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+(p.unlock?' · '+p.unlock+' XP unlock':'')+'</small></button>').join('');
 document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>choose(+b.dataset.index)));choose(0);
@@ -481,10 +481,10 @@ if(camera===2){
 if(cameraSnap){camEye=eye.slice();camTarget=target.slice();cameraSnap=false}
 else{const factor=1-Math.exp(-6/60);camEye=camEye.map((v,i)=>mix(v,eye[i],factor));camTarget=camTarget.map((v,i)=>mix(v,target[i],factor))}
 const view=viewMatrix(camEye,camTarget),proj=projection((camera===2?73:camera===1?62:61)*Math.PI/180,w/h,.15,2300);
-if(dusk)draw(sunsetSun,identity(),view,proj,camEye);
+if(dusk)draw(sunsetSun,identity(),view,proj,camEye,true);
  draw(field,identity(),view,proj,camEye);
  draw(worldObjects,identity(),view,proj,camEye);
- if(dusk)draw(sunsetScenery,identity(),view,proj,camEye);
+ if(dusk)draw(sunsetScenery,identity(),view,proj,camEye,true);
  if(active&&!missionFinished&&(selectedMission===1||selectedMission===3)){
   const indexLimit=selectedMission===3?5:checkpoints.length;
   for(let i=missionIndex;i<Math.min(indexLimit,missionIndex+3);i++){
