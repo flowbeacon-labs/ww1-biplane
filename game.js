@@ -24,15 +24,32 @@ class Mesh{constructor(){this.pos=[];this.nrm=[];this.col=[];this.buf=null}
  disc(x,y,z,r,col){for(let i=0;i<20;i++){let a=i*TAU/20,b=(i+1)*TAU/20;this.tri(v(x,y,z),v(x+Math.cos(a)*r,y,z+Math.sin(a)*r),v(x+Math.cos(b)*r,y,z+Math.sin(b)*r),col)}}
  upload(){if(this.buf)return;this.count=this.pos.length/3;this.buf=[this.pos,this.nrm,this.col].map(data=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);return b})}
 }
-function makeField(){const m=new Mesh();m.box(0,-.30,0,1700,.55,1700,D.grass);m.box(0,.01,0,28,.06,610,D.strip);
+function makeField(theme='flanders'){const m=new Mesh();
+const grass=theme==='picardy'?[.48,.47,.30]:theme==='italy'?[.33,.50,.32]:D.grass;
+const strip=theme==='picardy'?[.63,.52,.36]:theme==='italy'?[.55,.57,.46]:D.strip;
+m.box(0,-.30,0,1700,.55,1700,grass);m.box(0,.01,0,28,.06,610,strip);
 for(let z=-280;z<300;z+=28)m.box(0,.049,z,1.2,.035,11,D.white);
 for(const x of [-15,15])for(let z=-294;z<=294;z+=15)m.box(x,.07,z,.5,.08,.7,D.white);
 let seed=42;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)|0;return(seed>>>0)/4294967296};
-for(let i=0;i<260;i++){const x=(rand()-.5)*1550,z=(rand()-.5)*1550;if(Math.abs(x)<24&&Math.abs(z)<320)continue;m.box(x,.004,z,2+rand()*9,.025,3+rand()*9,rand()<.5?D.grass:D.patch)}
-for(const x of [-83,-50,53,88]){m.box(x,5.5,78,27,11,27,D.wood);m.box(x,11.9,78,30,2,30,D.steel);m.box(x,5.6,64,17,9,.45,D.black)}
+for(let i=0;i<260;i++){const x=(rand()-.5)*1550,z=(rand()-.5)*1550;if(Math.abs(x)<24&&Math.abs(z)<320)continue;m.box(x,.004,z,2+rand()*9,.025,3+rand()*9,rand()<.5?grass:theme==='picardy'?[.55,.52,.34]:D.patch)}
+for(const x of [-83,-50,53,88]){m.box(x,5.5,78,27,11,27,theme==='italy'?D.white:D.wood);m.box(x,11.9,78,30,2,30,theme==='picardy'?D.red:D.steel);m.box(x,5.6,64,17,9,.45,D.black)}
 for(let i=0;i<62;i++){let x=(rand()-.5)*1450,z=(rand()-.5)*1450;if(Math.abs(x)<130&&Math.abs(z)<365)continue;let h=6+rand()*10;m.tube(v(x,.1,z),v(x,h*.42,z),.46,D.wood,5);m.tube(v(x,h*.4,z),v(x,h,z),2,rand()<.5?D.grass:D.patch,8)}
-for(const z of [-275,275])m.box(0,.11,z,35,.2,1.2,D.white);return m}
-const field=makeField();
+for(const z of [-275,275])m.box(0,.11,z,35,.2,1.2,D.white);
+if(theme==='italy'){
+ for(const [x,z,h] of [[-640,380,235],[-410,700,330],[390,680,290],[670,310,200],[-680,-460,250],[650,-580,245]]){
+  const a=[x-190,0,z],b=[x+190,0,z],c=[x,h,z+12];
+  m.tri(a,b,c,[.39,.47,.43]);m.tri([x-120,0,z+70],[x+120,0,z+70],c,[.49,.55,.50]);
+  m.tri([x-h*.1,h*.70,z+6],[x+h*.1,h*.70,z+6],c,[.82,.83,.80]);
+ }
+}
+if(theme==='picardy'){
+ for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+  const x=i*172+75,z=j*160+65;if(Math.abs(x)<44&&Math.abs(z)<325)continue;
+  m.box(x,.008,z,135,.018,116,(i+j)%3===0?[.58,.53,.31]:(i-j)%3===0?[.43,.51,.29]:[.62,.57,.34]);
+ }
+}
+return m}
+let field=makeField();
 function makeAircraft(p){
 const m=new Mesh(),prop=new Mesh(),base=hex(p.color),wing=hex(p.wing),trim=hex(p.trim),span=p.span,body=p.body;
 const segments=[{z:-body*.53,w:.26,h:.38,y:.78},{z:-body*.24,w:.76,h:.84,y:.94},{z:body*.1,w:1.10,h:1.10,y:1.01},{z:body*.37,w:.82,h:.82,y:1.01},{z:body*.52,w:.24,h:.27,y:.98}];
@@ -64,6 +81,7 @@ const keys=new Set(),touch=new Set();
 
 /* WINGS OF 1918 ACADEMY: missions, progression, AI, weather, damage, audio */
 const SAVE_KEY='flowbeacon-wings-career-v1',DIFFICULTIES=['arcade','balanced','sim'],WEATHERS=['clear','breezy','storm'];
+const AIRFIELDS={flanders:'Flanders Grass Strip',picardy:'Picardy Farm Airfield',italy:'Italian Valley Base'};
 const missions=[
  {id:'solo',name:'First Solo Flight',description:'Take off, climb to 80 m and return for a gentle landing.',goal:'Reach 80 m, then land safely',award:130},
  {id:'rings',name:'Sky Ring Challenge',description:'Fly through a marked course of ten glowing aerial rings.',goal:'Fly through ten checkpoint rings',award:180},
@@ -80,7 +98,7 @@ const landmarks=[
  {name:'River Bridge',x:345,z:315,y:47},
  {name:'Railway Station',x:-330,z:-285,y:48}
 ];
-const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic'},missionsCompleted:0});
+const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic',airfield:'flanders'},missionsCompleted:0});
 function cleanCareer(value){
  const c=fallbackProgress();if(!value||typeof value!=='object')return c;
  for(const k of ['xp','flights','landings','medals'])c[k]=Math.max(0,Math.min(10000000,Number.isFinite(value[k])?Math.floor(value[k]):0));
@@ -89,13 +107,14 @@ function cleanCareer(value){
   if(DIFFICULTIES.includes(value.settings.difficulty))c.settings.difficulty=value.settings.difficulty;
   if(WEATHERS.includes(value.settings.weather))c.settings.weather=value.settings.weather;
   if(['classic','sky','ace'].includes(value.settings.livery))c.settings.livery=value.settings.livery;
+  if(Object.prototype.hasOwnProperty.call(AIRFIELDS,value.settings.airfield))c.settings.airfield=value.settings.airfield;
  }
  c.missionsCompleted=missions.filter(m=>c.completed[m.id]).length;
  return c;
 }
 function loadCareer(){try{return cleanCareer(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'))}catch{return fallbackProgress()}}
 let career=loadCareer(),selectedMission=0,missionTime=0,missionScore=0,missionStage=0,missionIndex=0,missionFinished=false,airborne=false,damage=100,fuel=100,trainingShots=0,photoDone=new Set(),formationClock=0,weatherClock=0,fireCooldown=0,smokeTime=0,missionMarks=[],missionRender=[],enemyDefeated=false;
-let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
+let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,airfield=career.settings.airfield,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
 const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,color:'#b8c8d0'}],bots=[];
 const aiShape=makeAircraft(planes[3]),enemyShape=makeAircraft(planes[1]);
 const markerMeshes=(()=>{const ring=new Mesh(),gold=D.gold;for(let i=0;i<40;i++){const a=i*TAU/40,b=(i+1)*TAU/40;ring.tube([Math.cos(a)*10,Math.sin(a)*10,0],[Math.cos(b)*10,Math.sin(b)*10,0],.58,i%2?D.white:gold,5)}
@@ -123,7 +142,7 @@ const worldObjects=(()=>{const m=new Mesh();const r=()=>Math.random();
  }
  return m;
 })();
-function saveCareer(){career.settings={difficulty,weather,livery:paintScheme};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
+function saveCareer(){career.settings={difficulty,weather,livery:paintScheme,airfield};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
 function rankTitle(){return career.xp>=2500?'ACE PILOT':career.xp>=1250?'SQUADRON LEADER':career.xp>=600?'FLYING OFFICER':career.xp>=200?'TRAINEE PILOT':'FLIGHT CADET'}
 function refreshCareer(){
  $('pilotRank').textContent=rankTitle();$('pilotXp').textContent=career.xp+' XP';
@@ -141,10 +160,14 @@ function setLivery(){
 }
 function syncSettings(){
  difficulty=$('difficulty').value;weather=$('weather').value;paintScheme=$('livery').value;
+ const newAirfield=AIRFIELDS[$('airfield').value]?$('airfield').value:'flanders';
+ if(newAirfield!==airfield){airfield=newAirfield;field=makeField(airfield)}
+ $('airfieldLabel').textContent=AIRFIELDS[airfield];
  if((paintScheme==='sky'&&career.xp<100)||(paintScheme==='ace'&&career.xp<400)){paintScheme='classic';$('livery').value='classic';announce('Earn XP to unlock that paint scheme.')}
  setLivery();saveCareer();
 }
-for(const id of ['difficulty','weather','livery']){$(id).value=career.settings[id==='livery'?'livery':id];$(id).addEventListener('change',syncSettings)}
+for(const id of ['difficulty','weather','livery','airfield']){$(id).value=career.settings[id];$(id).addEventListener('change',syncSettings)}
+field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
 function setupMission(){
@@ -265,11 +288,11 @@ $('importSave').addEventListener('click',()=>$('importFile').click());
 $('resetCareer').addEventListener('click',()=>{
  if(!window.confirm('Delete saved ranks, XP, medals and mission records on this device? This cannot be undone without an exported backup.'))return;
  career=fallbackProgress();difficulty='arcade';weather='clear';paintScheme='classic';
- for(const id of ['difficulty','weather','livery'])$(id).value=career.settings[id];
+ for(const id of ['difficulty','weather','livery','airfield'])$(id).value=career.settings[id];airfield='flanders';field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];
  saveCareer();selectedMission=0;missionPending=true;choose(0);
  announce('Pilot career reset. Export a backup before resetting next time.');
 });
-$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;for(const id of ['difficulty','weather','livery'])$(id).value=career.settings[id];saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
+$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;for(const id of ['difficulty','weather','livery','airfield'])$(id).value=career.settings[id];airfield=career.settings.airfield;field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
 function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
