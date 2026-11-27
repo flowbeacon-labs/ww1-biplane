@@ -13,7 +13,7 @@ function boot() {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -24,7 +24,7 @@ function boot() {
       files:[],
       style:{width:'',transform:''},
       events:{},
-      classList:{add(){},remove(){},toggle(){}},
+      classList:(()=>{const flags=new Set();return{add(key){flags.add(key);},remove(key){flags.delete(key);},contains(key){return flags.has(key);},toggle(key){if(flags.has(key)){flags.delete(key);return false;}flags.add(key);return true;}}})(),
       addEventListener(type,fn){this.events[type]=fn;},
       querySelectorAll(){return[];}, setAttribute(){},setPointerCapture(){},
       getBoundingClientRect(){return{left:0,top:0,width:110,height:110};},
@@ -121,4 +121,29 @@ test('Back to Planes pauses flight and aircraft change starts a fresh flight',()
  assert.equal(element('menu').hidden,true);
  assert.equal(game.state.speed,0);
  assert.equal(game.state.y,0.48);
+});
+
+test('Checkpoint rings stay off the runway and its immediate approach corridor',()=>{
+ const {game}=boot();
+ assert.equal(game.checkpoints.length,10);
+ for(const [x,y,z] of game.checkpoints){
+  assert.ok(Math.abs(x)>=75,'Ring at x='+x+' intrudes into runway safety margin');
+  assert.ok(y>=75,'Ring has unsafe altitude');
+  assert.ok(Number.isFinite(z));
+ }
+});
+
+test('Flight statistics start collapsed and can be toggled without stopping flight',()=>{
+ const {game,element}=boot();
+ const toggle=element('hudToggle');
+ assert.equal(toggle.textContent,'');
+ assert.equal(element('app').classList.contains('stats-open'),false);
+ game.begin();
+ toggle.events.click();
+ assert.equal(element('app').classList.contains('stats-open'),true);
+ assert.equal(toggle.textContent,'HIDE STATS');
+ toggle.events.click();
+ assert.equal(element('app').classList.contains('stats-open'),false);
+ assert.equal(toggle.textContent,'STATS');
+ assert.equal(element('menu').hidden,true);
 });
