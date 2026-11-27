@@ -59,6 +59,209 @@ return{mesh:m,prop,offset:[0,.98,body*.58]}}
 let selected=0,model=makeAircraft(planes[0]),active=false,paused=true,crashed=false,brake=true,grounded=true,camera=0,propAngle=0;
 const state={x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0};
 const keys=new Set(),touch=new Set();
+
+/* WINGS OF 1918 ACADEMY: missions, progression, AI, weather, damage, audio */
+const SAVE_KEY='flowbeacon-wings-career-v1',DIFFICULTIES=['arcade','balanced','sim'],WEATHERS=['clear','breezy','storm'];
+const missions=[
+ {id:'solo',name:'First Solo Flight',description:'Take off, climb to 80 m and return for a gentle landing.',goal:'Reach 80 m, then land safely',award:130},
+ {id:'rings',name:'Sky Ring Challenge',description:'Fly through a marked course of ten glowing aerial rings.',goal:'Fly through ten checkpoint rings',award:180},
+ {id:'recon',name:'Reconnaissance Patrol',description:'Photograph the village, river and railway before returning to base.',goal:'Photograph three landmarks and land',award:200},
+ {id:'formation',name:'Formation Flying',description:'Stay close to the friendly patrol through five checkpoints.',goal:'Keep formation and complete the route',award:170},
+ {id:'emergency',name:'Engine Emergency',description:'Fly to 75 m, then glide down with failing engine power.',goal:'Land with a damaged engine',award:220},
+ {id:'combat',name:'First Dogfight',description:'Track and disable the training opponent in a safe practice engagement.',goal:'Disable the training aircraft and return',award:250}
+];
+const checkpoints=[
+ [0,82,70],[110,105,150],[215,110,220],[260,120,350],[160,120,445],[0,100,480],[-140,115,405],[-235,100,300],[-185,90,160],[-65,80,35]
+];
+const landmarks=[
+ {name:'Village',x:-325,z:300,y:48},
+ {name:'River Bridge',x:345,z:315,y:47},
+ {name:'Railway Station',x:-330,z:-285,y:48}
+];
+const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic'},missionsCompleted:0});
+function cleanCareer(value){
+ const c=fallbackProgress();if(!value||typeof value!=='object')return c;
+ for(const k of ['xp','flights','landings','medals'])c[k]=Math.max(0,Math.min(10000000,Number.isFinite(value[k])?Math.floor(value[k]):0));
+ for(const k of ['completed','best']){if(value[k]&&typeof value[k]==='object'&&!Array.isArray(value[k]))for(const m of missions){let v=value[k][m.id];if(k==='completed')c[k][m.id]=Boolean(v);else if(Number.isFinite(v))c[k][m.id]=Math.max(0,Math.min(1000000,Math.floor(v)))}}
+ if(value.settings&&typeof value.settings==='object'){
+  if(DIFFICULTIES.includes(value.settings.difficulty))c.settings.difficulty=value.settings.difficulty;
+  if(WEATHERS.includes(value.settings.weather))c.settings.weather=value.settings.weather;
+  if(['classic','sky','ace'].includes(value.settings.livery))c.settings.livery=value.settings.livery;
+ }
+ c.missionsCompleted=missions.filter(m=>c.completed[m.id]).length;
+ return c;
+}
+function loadCareer(){try{return cleanCareer(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'))}catch{return fallbackProgress()}}
+let career=loadCareer(),selectedMission=0,missionTime=0,missionScore=0,missionStage=0,missionIndex=0,missionFinished=false,airborne=false,damage=100,fuel=100,trainingShots=0,photoDone=new Set(),formationClock=0,weatherClock=0,fireCooldown=0,smokeTime=0,missionMarks=[],missionRender=[],enemyDefeated=false;
+let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,windClock=0,joystick={x:0,y:0},joystickPointer=null;
+const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,color:'#b8c8d0'}],bots=[];
+const aiShape=makeAircraft(planes[3]),enemyShape=makeAircraft(planes[1]);
+const markerMeshes=(()=>{const ring=new Mesh(),gold=D.gold;for(let i=0;i<40;i++){const a=i*TAU/40,b=(i+1)*TAU/40;ring.tube([Math.cos(a)*10,Math.sin(a)*10,0],[Math.cos(b)*10,Math.sin(b)*10,0],.58,i%2?D.white:gold,5)}
+ return {ring,marker:ring}})();
+const worldObjects=(()=>{const m=new Mesh();const r=()=>Math.random();
+ // River and a stone bridge, deliberately outside the takeoff strip.
+ m.box(355,-.07,150,53,.06,780,[.22,.50,.64]);
+ m.box(355,1.2,315,63,2.5,10,D.steel);
+ // Railroad with sleepers and a station.
+ for(const x of [-342,-330])m.box(x,.16,-260,1,.35,560,D.steel);
+ for(let z=-540;z<20;z+=9)m.box(-336,.20,z,25,.20,1.4,D.wood);
+ m.box(-382,6,-290,36,12,20,D.wood);m.box(-382,13,-290,39,3,24,D.red);
+ // Countryside village blocks.
+ for(let i=0;i<17;i++){const x=-390+(i%5)*25,z=250+Math.floor(i/5)*28,hh=6+(i%3)*3;m.box(x,hh/2,z,14,hh,14,i%3===0?D.wood:D.white);m.box(x,hh+1,z,17,2.5,17,i%2?D.red:D.steel)}
+ // Village church and water tower make the route recognizable.
+ m.box(-330,20,370,9,40,9,D.white);m.box(-330,42,370,13,5,13,D.red);
+ m.tube([480,0,-330],[480,38,-330],3,D.steel);m.box(480,42,-330,18,9,18,D.wood);
+ // A few farms and roads.
+ m.box(-250,.02,400,12,.04,360,D.strip);m.box(250,.02,-320,10,.04,260,D.strip);
+ for(const [x,z] of [[-230,480],[230,-385],[450,-30],[-480,-80]]){m.box(x,5,z,24,10,20,D.wood);m.box(x,11,z,28,2,24,D.red)}
+ return m;
+})();
+function saveCareer(){career.settings={difficulty,weather,livery:paintScheme};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
+function rankTitle(){return career.xp>=2500?'ACE PILOT':career.xp>=1250?'SQUADRON LEADER':career.xp>=600?'FLYING OFFICER':career.xp>=200?'TRAINEE PILOT':'FLIGHT CADET'}
+function refreshCareer(){
+ $('pilotRank').textContent=rankTitle();$('pilotXp').textContent=career.xp+' XP';
+ $('careerSummary').textContent=career.missionsCompleted+' of '+missions.length+' missions completed · '+career.medals+' medals · '+career.landings+' landings';
+ $('missions').innerHTML=missions.map((m,i)=>'<button class="mission-choice" data-mission="'+i+'" aria-pressed="'+(i===selectedMission)+'"><strong>'+(i+1)+'. '+m.name+'</strong><small>'+m.description+'</small><em>'+(career.completed[m.id]?'✓ Completed · Best '+(career.best[m.id]||0):'Reward '+m.award+' XP')+'</em></button>').join('');
+ document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>{selectedMission=+b.dataset.mission;refreshCareer();$('missionNumber').textContent=selectedMission+1;$('missionHeading').textContent=missions[selectedMission].name});
+}
+function setLivery(){
+ // Paint options are intentionally visual via material tint, while the plane geometry remains unchanged.
+ let p={...planes[selected]};
+ if(paintScheme==='sky'&&career.xp>=100){p.color='#52799a';p.wing='#8bbacb';p.trim='#f4efe1'}
+ if(paintScheme==='ace'&&career.xp>=400){p.color='#ac8238';p.wing='#e1bf61';p.trim='#fff2c5'}
+ model=makeAircraft(p);
+}
+function syncSettings(){
+ difficulty=$('difficulty').value;weather=$('weather').value;paintScheme=$('livery').value;
+ if((paintScheme==='sky'&&career.xp<100)||(paintScheme==='ace'&&career.xp<400)){paintScheme='classic';$('livery').value='classic';announce('Earn XP to unlock that paint scheme.')}
+ setLivery();saveCareer();
+}
+for(const id of ['difficulty','weather','livery']){$(id).value=career.settings[id==='livery'?'livery':id];$(id).addEventListener('change',syncSettings)}
+$('missionMenu').addEventListener('click',()=>{pause()});
+$('pauseFlight').addEventListener('click',()=>{pause()});
+function setupMission(){
+ missionTime=0;missionScore=0;missionStage=0;missionIndex=0;missionFinished=false;airborne=false;photoDone.clear();formationClock=0;enemyDefeated=false;trainingShots=0;damage=100;fuel=100;fireCooldown=0;smokeTime=0;windClock=0;
+ $('missionHeading').textContent=missions[selectedMission].name;
+ $('missionNumber').textContent=selectedMission+1;
+ $('crosshair').hidden=selectedMission!==5;
+ $('photo').disabled=selectedMission!==2;$('fire').disabled=selectedMission!==5;
+ bots.length=0;
+ if(selectedMission===3){bots.push({friendly:true,x:-17,y:70,z:45,hp:100,phase:0}, {friendly:true,x:17,y:70,z:45,hp:100,phase:2})}
+ if(selectedMission===5){bots.push({friendly:false,x:0,y:95,z:195,hp:100,phase:0})}
+ updateMissionDisplay();
+}
+function formatTime(seconds){const n=Math.max(0,Math.floor(seconds));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
+function currentTarget(){
+ if(selectedMission===1||selectedMission===3)return checkpoints[Math.min(missionIndex,checkpoints.length-1)];
+ if(selectedMission===2)return landmarks[missionIndex]?[landmarks[missionIndex].x,landmarks[missionIndex].y,landmarks[missionIndex].z]:null;
+ if(selectedMission===5)return bots.find(b=>!b.friendly&&b.hp>0)?[bots[0].x,bots[0].y,bots[0].z]:[0,40,0];
+ return null;
+}
+function objectiveText(){
+ if(missionFinished)return 'Mission complete! Choose another mission from the menu.';
+ const m=missions[selectedMission];
+ if(selectedMission===0)return missionStage===0?'Take off and climb above 80 metres.':missionStage===1?'Return to the runway and land gently.':'Complete';
+ if(selectedMission===1)return missionIndex<checkpoints.length?'Pass ring '+(missionIndex+1)+' of '+checkpoints.length+'.':'Return to base for your landing.';
+ if(selectedMission===2)return missionIndex<3?'Fly near '+landmarks[missionIndex].name+' and press PHOTO.':'Return to base and land.';
+ if(selectedMission===3)return missionIndex<5?'Follow wingmen through waypoint '+(missionIndex+1)+' / 5.':'Return to base and land.';
+ if(selectedMission===4)return missionStage===0?'Climb above 75 m; your engine will lose power.':'Engine failure: glide to a safe landing.';
+ if(selectedMission===5)return enemyDefeated?'Return to base and land.':'Get behind the red training aircraft and press FIRE.';
+ return m.goal;
+}
+function updateMissionDisplay(){
+ $('objective').textContent=objectiveText();$('missionTime').textContent=formatTime(missionTime);
+ $('missionScore').textContent=Math.round(missionScore)+' pts';
+ $('fuel').textContent=Math.max(0,Math.round(fuel))+'%';$('health').textContent=Math.round(damage)+'%';
+ $('compass').textContent=String((Math.round(state.yaw*180/Math.PI)%360+360)%360).padStart(3,'0')+'°';
+ $('windReadout').textContent=weather==='clear'?'CALM':weather==='breezy'?'BREEZY':'STORM';
+ $('formationInfo').textContent=bots.filter(b=>b.friendly).length?'WINGMEN: '+bots.filter(b=>b.friendly).length:'WINGMEN: —';
+ const t=currentTarget();$('radarTargets').innerHTML=t?'<span class="radar-dot target" style="left:'+clamp(50+(t[0]-state.x)*.07,5,94)+'%;top:'+clamp(50-(t[2]-state.z)*.07,5,94)+'%"></span>':'';
+}
+function grant(amount){missionScore+=amount;}
+function finishMission(){
+ if(missionFinished)return;missionFinished=true;
+ const m=missions[selectedMission],timeBonus=Math.round(Math.max(0,220-missionTime)*.4),healthBonus=Math.round(damage*.3);
+ const finalScore=Math.max(0,Math.round(missionScore+timeBonus+healthBonus));
+ const bronze=finalScore>=100,silver=finalScore>=210,gold=finalScore>=340;
+ const stars=gold?3:silver?2:bronze?1:1;
+ career.flights=Math.max(0,career.flights);career.xp+=m.award+stars*15;career.medals+=stars;
+ career.completed[m.id]=true;career.best[m.id]=Math.max(career.best[m.id]||0,finalScore);
+ career.missionsCompleted=missions.filter(item=>career.completed[item.id]).length;
+ saveCareer();updateMissionDisplay();
+ announce('MISSION COMPLETE · '+finalScore+' pts · '+stars+' medal stars · +'+(m.award+stars*15)+' XP');
+}
+function notifyLanding(safe){
+ if(!active||paused||missionFinished||!airborne)return;
+ if(!safe){damage=Math.max(0,damage-45);grant(-60);announce('Hard landing! Mission failed. Restart to try again.');return}
+ career.landings++;saveCareer();grant(90);
+ if(selectedMission===0&&missionStage===1)finishMission();
+ if(selectedMission===1&&missionIndex>=checkpoints.length)finishMission();
+ if(selectedMission===2&&missionIndex>=landmarks.length)finishMission();
+ if(selectedMission===3&&missionIndex>=5)finishMission();
+ if(selectedMission===4&&missionStage===1)finishMission();
+ if(selectedMission===5&&enemyDefeated)finishMission();
+ airborne=false;
+}
+function flightTick(dt){
+ if(!active||paused||crashed||missionFinished)return;
+ missionTime+=dt;fireCooldown=Math.max(0,fireCooldown-dt);windClock+=dt;
+ fuel=Math.max(0,fuel-dt*(.012+state.throttle*.030));
+ if(fuel===0){state.throttle=0;damage=Math.max(0,damage-dt*1.2)}
+ if(!grounded)airborne=true;
+ const p=[state.x,state.y,state.z];
+ if(selectedMission===0&&missionStage===0&&state.y>=80){missionStage=1;grant(95);announce('Altitude objective reached! Return to the runway and land.')}
+ if(selectedMission===4&&missionStage===0&&state.y>=75){missionStage=1;state.throttle=Math.min(state.throttle,.22);grant(90);announce('Engine failure! Glide toward the airfield and land.')}
+ if((selectedMission===1||selectedMission===3)&&missionIndex<(selectedMission===3?5:checkpoints.length)){
+ const t=checkpoints[missionIndex],dist=Math.hypot(state.x-t[0],state.y-t[1],state.z-t[2]);
+ if(dist<(selectedMission===3?65:17)){
+  if(selectedMission===3&&formationClock<3)announce('Keep formation with your wingmen for 3 seconds before next waypoint.');
+  else{missionIndex++;grant(selectedMission===3?45:35);formationClock=0;announce('Checkpoint '+missionIndex+' reached!')}
+ }
+ }
+ if(selectedMission===3){const nearby=bots.filter(b=>b.friendly&&Math.hypot(b.x-state.x,b.y-state.y,b.z-state.z)<110).length;if(nearby)formationClock+=dt;else formationClock=Math.max(0,formationClock-dt*.4)}
+ for(const b of bots){
+  b.phase+=dt;
+  if(b.friendly){const t=checkpoints[Math.min(missionIndex,4)];const f=Math.min(1,dt*.8),shift=b.x<0?-22:22;
+   b.x=mix(b.x,t[0]+shift,f);b.z=mix(b.z,t[2]-30,f);b.y=mix(b.y,t[1],f)}
+  else{b.x=80*Math.sin(b.phase*.45);b.z=205+70*Math.cos(b.phase*.45);b.y=95+11*Math.sin(b.phase*.8)}
+ }
+ if(selectedMission===5&&!enemyDefeated&&bots[0]?.hp<=0){enemyDefeated=true;grant(180);announce('Training opponent disabled! Return to base.')}
+ if(damage<=0){crashed=true;announce('Aircraft critically damaged. Restart the mission.')}
+ updateMissionDisplay();
+}
+function takePhoto(){
+ if(selectedMission!==2||missionFinished||!active||paused)return;
+ const place=landmarks[missionIndex];if(!place)return;
+ const d=Math.hypot(state.x-place.x,state.y-place.y,state.z-place.z);
+ if(d>145){announce('Move closer to '+place.name+' before taking the photograph.');return}
+ photoDone.add(place.name);missionIndex++;grant(60);announce(place.name+' photographed ('+missionIndex+'/3).');updateMissionDisplay();
+}
+function shoot(){
+ if(selectedMission!==5||missionFinished||!active||paused||fireCooldown>0)return;
+ fireCooldown=.16;trainingShots++;
+ const e=bots.find(b=>!b.friendly&&b.hp>0);
+ if(!e)return;
+ const dx=e.x-state.x,dz=e.z-state.z,dy=e.y-state.y,dist=Math.hypot(dx,dy,dz);
+ const bearing=Math.atan2(dx,dz),angle=Math.atan2(Math.sin(bearing-state.yaw),Math.cos(bearing-state.yaw));
+ const elevation=Math.atan2(dy,Math.hypot(dx,dz));
+ if(dist<235&&Math.abs(angle)<.20&&Math.abs(elevation-state.pitch)<.20){e.hp-=17;grant(9);announce('Target hit! '+Math.max(0,Math.round(e.hp))+'% remaining.')}else{announce('Missed! Aim toward the aircraft ahead and close the distance.')}
+}
+$('fire').addEventListener('click',shoot);$('photo').addEventListener('click',takePhoto);
+$('exportSave').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(cleanCareer(career),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='wings-of-1918-pilot.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200)});
+$('importSave').addEventListener('click',()=>$('importFile').click());
+$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;for(const id of ['difficulty','weather','livery'])$(id).value=career.settings[id];saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
+refreshCareer();
+let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
+function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
+$('sound').addEventListener('click',()=>{soundEnabled=!soundEnabled;if(soundEnabled){audioSetup();audioContext?.resume()}$('sound').textContent=soundEnabled?'SOUND ON':'SOUND OFF'});
+function updateAudio(){if(!audioContext||!engineOsc||!engineGain)return;const now=audioContext.currentTime;engineOsc.frequency.setTargetAtTime(52+state.throttle*70,now,.12);engineGain.gain.setTargetAtTime(soundEnabled&&active&&!paused?.025+state.throttle*.045:0,now,.12)}
+function joystickInput(){return{x:joystick.x,y:joystick.y}}
+const joy=$('joyArea'),knob=$('joyKnob');
+function joystickMove(e){if(joystickPointer!==e.pointerId)return;const r=joy.getBoundingClientRect(),x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2),mag=Math.max(1,Math.hypot(x,y)),scale=Math.min(43,mag)/mag;joystick.x=clamp(x*scale/43,-1,1);joystick.y=clamp(-y*scale/43,-1,1);knob.style.transform='translate('+joystick.x*36+'px,'+(-joystick.y*36)+'px)'}
+joy.addEventListener('pointerdown',e=>{joystickPointer=e.pointerId;joy.setPointerCapture(e.pointerId);joystickMove(e);e.preventDefault()});
+joy.addEventListener('pointermove',joystickMove);
+for(const event of ['pointerup','pointercancel','lostpointercapture'])joy.addEventListener(event,()=>{joystickPointer=null;joystick.x=0;joystick.y=0;knob.style.transform='translate(0,0)'});
+
 const identity=()=>[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
 function multiply(a,b){const m=Array(16).fill(0);for(let col=0;col<4;col++)for(let row=0;row<4;row++)for(let k=0;k<4;k++)m[col*4+row]+=a[k*4+row]*b[col*4+k];return m}
 function move(x,y,z){const m=identity();m[12]=x;m[13]=y;m[14]=z;return m}
