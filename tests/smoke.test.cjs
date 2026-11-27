@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'game.js'), 'utf8');
-const HOOK = 'reset();requestAnimationFrame(frame);\n})();';
+const HOOK = 'reset();requestAnimationFrame(frame);';
 
 function boot() {
   assert.ok(SOURCE.includes(HOOK), 'Game startup hook must remain available');
