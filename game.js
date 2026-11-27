@@ -1,5 +1,6 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id),cv=$('flight'),gl=cv.getContext('webgl',{antialias:true,alpha:false,powerPreference:'high-performance'});
+cv.addEventListener('webglcontextlost',e=>{e.preventDefault();$('error').hidden=false;$('error').textContent='Graphics context lost. Reload the game to restore the 3D scene.'});
 if(!gl){$('error').hidden=false;$('error').textContent='WebGL unavailable. Try a newer browser with hardware acceleration enabled.';return}
 const TAU=Math.PI*2,clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),mix=(a,b,t)=>a+(b-a)*t;
 const planes=[
@@ -23,6 +24,7 @@ class Mesh{constructor(){this.pos=[];this.nrm=[];this.col=[];this.buf=null}
  tube(a,b,r,col,segments=7){const axis=unit(sub(b,a)),ref=Math.abs(axis[1])>.9?[1,0,0]:[0,1,0],u=unit(cross(axis,ref)),w=cross(axis,u);for(let i=0;i<segments;i++){const theta=i*TAU/segments,phi=(i+1)*TAU/segments,offset=t=>u.map((n,j)=>n*Math.cos(t)*r+w[j]*Math.sin(t)*r);this.quad(add(a,offset(theta)),add(b,offset(theta)),add(b,offset(phi)),add(a,offset(phi)),col)}}
  disc(x,y,z,r,col){for(let i=0;i<20;i++){let a=i*TAU/20,b=(i+1)*TAU/20;this.tri(v(x,y,z),v(x+Math.cos(a)*r,y,z+Math.sin(a)*r),v(x+Math.cos(b)*r,y,z+Math.sin(b)*r),col)}}
  upload(){if(this.buf)return;this.count=this.pos.length/3;this.buf=[this.pos,this.nrm,this.col].map(data=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);return b})}
+ destroy(){if(this.buf){for(const b of this.buf)gl.deleteBuffer(b);this.buf=null}}
 }
 function makeField(theme='flanders'){const m=new Mesh();
 const grass=theme==='picardy'?[.48,.47,.30]:theme==='italy'?[.33,.50,.32]:D.grass;
@@ -156,18 +158,19 @@ function setLivery(){
  let p={...planes[selected]};
  if(paintScheme==='sky'&&career.xp>=100){p.color='#52799a';p.wing='#8bbacb';p.trim='#f4efe1'}
  if(paintScheme==='ace'&&career.xp>=400){p.color='#ac8238';p.wing='#e1bf61';p.trim='#fff2c5'}
+ if(model){model.mesh.destroy();model.prop.destroy()}
  model=makeAircraft(p);
 }
 function syncSettings(){
  difficulty=$('difficulty').value;weather=$('weather').value;paintScheme=$('livery').value;
  const newAirfield=AIRFIELDS[$('airfield').value]?$('airfield').value:'flanders';
- if(newAirfield!==airfield){airfield=newAirfield;field=makeField(airfield)}
+ if(newAirfield!==airfield){field.destroy();airfield=newAirfield;field=makeField(airfield)}
  $('airfieldLabel').textContent=AIRFIELDS[airfield];
  if((paintScheme==='sky'&&career.xp<100)||(paintScheme==='ace'&&career.xp<400)){paintScheme='classic';$('livery').value='classic';announce('Earn XP to unlock that paint scheme.')}
  setLivery();saveCareer();
 }
 for(const id of ['difficulty','weather','livery','airfield']){$(id).value=career.settings[id];$(id).addEventListener('change',syncSettings)}
-field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];
+field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
 function setupMission(){
@@ -288,11 +291,11 @@ $('importSave').addEventListener('click',()=>$('importFile').click());
 $('resetCareer').addEventListener('click',()=>{
  if(!window.confirm('Delete saved ranks, XP, medals and mission records on this device? This cannot be undone without an exported backup.'))return;
  career=fallbackProgress();difficulty='arcade';weather='clear';paintScheme='classic';
- for(const id of ['difficulty','weather','livery','airfield'])$(id).value=career.settings[id];airfield='flanders';field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];
+ for(const id of ['difficulty','weather','livery','airfield'])$(id).value=career.settings[id];airfield='flanders';field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];
  saveCareer();selectedMission=0;missionPending=true;choose(0);
  announce('Pilot career reset. Export a backup before resetting next time.');
 });
-$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;for(const id of ['difficulty','weather','livery','airfield'])$(id).value=career.settings[id];airfield=career.settings.airfield;field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
+$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;for(const id of ['difficulty','weather','livery','airfield'])$(id).value=career.settings[id];airfield=career.settings.airfield;field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
 function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
@@ -319,7 +322,7 @@ const fsource='precision mediump float;varying vec3 vCol;varying float fog;void 
 const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vsource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fsource));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
 const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k));
 function draw(mesh,mat,view,proj,eye){mesh.upload();for(const [loc,m] of [[uniforms[0],mat],[uniforms[1],view],[uniforms[2],proj]])gl.uniformMatrix4fv(loc,false,new Float32Array(m));gl.uniform3fv(uniforms[3],new Float32Array(eye));mesh.buf.forEach((b,i)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(attributes[i]);gl.vertexAttribPointer(attributes[i],3,gl.FLOAT,false,0,0)});gl.drawArrays(gl.TRIANGLES,0,mesh.count)}
-function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}if(selected!==i)planePending=true;selected=i;model=makeAircraft(planes[i]);setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
+function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}if(selected!==i)planePending=true;selected=i;setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
 $('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+(p.unlock?' · '+p.unlock+' XP unlock':'')+'</small></button>').join('');
 document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>choose(+b.dataset.index)));choose(0);
 function announce(t){$('notice').textContent=t}
