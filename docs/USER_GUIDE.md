@@ -11,7 +11,7 @@
 
 ## Mission objectives
 - **First Solo:** Reach 80 m, then land; this is the recommended tutorial.
-- **Sky Rings:** Follow the yellow rings in order. Cross each near its center to advance. Navigate back to the strip for the final score.
+- **Sky Rings:** Follow the yellow rings in order. The ring course is deliberately off to the sides of the airstrip, so you must take off, turn away from the runway, and intercept the first ring to the east. Cross each near its center and return to the strip for the final score.
 - **Reconnaissance:** Fly near the highlighted landmark (within approximately 145 m), then press **PHOTO**. Visit the village, bridge and railway in order and land.
 - **Formation:** Fly close enough to the two AI wingmen to accumulate formation time; follow five checkpoints and return.
 - **Emergency:** At 75 m the engine is limited. Glide and land carefully.
@@ -25,7 +25,8 @@
 - **Compass:** current heading.
 - **Hull:** health available, reduced during practice combat.
 - **Fuel:** limited; reduce throttle and land before it reaches zero.
-- **Radar:** shows the current objective position relative to the practice field.
+- **Radar:** shows the current objective position relative to the practice field when detailed statistics are expanded.
+- **STATS:** hidden by default to keep the forward view clear. Tap STATS to reveal instrument gauges, telemetry and radar; tap HIDE STATS to remove them again without interrupting the flight.
 - **CAMERA:** cycles between chase, closer chase and cockpit-like viewpoint.
 - **SOUND OFF/ON:** toggles an original synthesized engine tone. This button is necessary because mobile browsers block unsolicited sound.
 
