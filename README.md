@@ -57,3 +57,9 @@ On GitHub, open **Settings → Pages**, choose **Deploy from a branch → main �
 ## Next enhancements
 
 Detailed cockpit gauges, historical liveries and national markings, takeoff and landing training scoring, runway approach guidance, custom flight joystick, enhanced landscape and weather, engine audio, wind and crosswinds, better physics and camera handling, and flight missions.
+
+## Aircraft visibility fix
+
+The camera view matrix originally contained invalid values because the 3D cross-product function returned only two components. The corrected implementation returns all three components, centers the chase camera on the fuselage, and resets the camera position when starting a flight or changing views. Aircraft fuselages also have increased color contrast and side striping.
+
+Regression checks confirm finite camera matrices in all three view modes and project the airplane's fuselage into the chase-camera viewport. Flight acceleration and takeoff checks continue to pass. Actual on-device GPU rendering has not yet been validated.
