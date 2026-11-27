@@ -1,28 +1,38 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#101b2e"><meta name="description" content="Fly historic World War I biplanes in a browser-based WebGL flight simulator.">
-<title>Wings of 1918 — WWI Flight Simulator</title><link rel="stylesheet" href="style.css?v=1"></head>
+<title>Wings of 1918 — WWI Flight Simulator</title><link rel="stylesheet" href="style.css?v=academy-1"></head>
 <body><main id="app"><canvas id="flight" aria-label="3D World War I aircraft flying over an airfield"></canvas>
 <div id="hud" class="hud">
-<header class="top"><a class="home" href="https://flowbeacon-labs.github.io/flowbeacon-arcade/" aria-label="Return to Flowbeacon Arcade">← Arcade</a><div class="brand"><b>WINGS OF 1918</b><small>FLIGHT SCHOOL · PHASE 1</small></div><button id="camera" title="Switch between chase, close-up and cockpit cameras" aria-label="Switch camera view">CAMERA <span id="camName">CHASE</span></button></header>
+<header class="top"><a class="home" href="https://flowbeacon-labs.github.io/flowbeacon-arcade/" aria-label="Return to Flowbeacon Arcade">← Arcade</a><div class="brand"><b>WINGS OF 1918</b><small>FLIGHT ACADEMY · CAREER MODE</small></div><button id="camera" title="Switch between chase, close-up and cockpit cameras" aria-label="Switch camera view">CAMERA <span id="camName">CHASE</span></button></header>
 <div class="gauges">
  <div class="gauge"><span>AIRSPEED</span><strong><output id="speed">0</output></strong><small>km/h (simulated)</small></div>
  <div class="gauge"><span>ALTITUDE</span><strong><output id="alt">0</output></strong><small>metres AGL</small></div>
  <div class="gauge"><span>THROTTLE</span><strong><output id="power">0</output>%</strong><div class="bar"><i id="powerBar"></i></div></div>
  <div class="gauge"><span>VERTICAL SPEED</span><strong><output id="vs">0</output></strong><small>m/s</small></div>
 </div>
-<div class="telemetry"><span id="flightState">PARKED ON RUNWAY</span><span id="selectedAircraft">Sopwith Camel · United Kingdom</span></div>
-<div class="help" id="help">W / S pitch · A / D bank · Q / E rudder · ↑ / ↓ throttle · SPACE brake · C camera · R reset</div>
+<section class="mission-hud" aria-label="Current flight mission">
+ <div><span class="mission-kicker">MISSION <span id="missionNumber">1</span></span><strong id="missionHeading">First Solo Flight</strong><p id="objective">Take off and climb to 80 m.</p></div>
+ <div class="mission-right"><span id="missionTime">00:00</span><span id="missionScore">0 pts</span><button id="missionMenu" type="button">MISSIONS</button></div>
+ </section>
+ <div class="telemetry"><span id="flightState">PARKED ON RUNWAY</span><span id="selectedAircraft">Sopwith Camel · United Kingdom</span></div>
+<div class="flight-info"><span>COMPASS <b id="compass">000°</b></span><span>FUEL <b id="fuel">100%</b></span><span>HULL <b id="health">100%</b></span><span>WIND <b id="windReadout">CALM</b></span><span id="formationInfo">WINGMEN: —</span></div>
+ <div class="crosshair" id="crosshair" hidden>⊕</div><div class="flight-radar" id="radar"><div class="radar-center">▲</div><div id="radarTargets"></div></div>
+ <div class="help" id="help">W / S pitch · A / D bank · Q / E rudder · ↑ / ↓ throttle · SPACE brake · C camera · R reset</div>
 <div class="notice" role="status" aria-live="polite" id="notice">Release brake, increase throttle and build speed to take off.</div>
-<div id="touch" aria-label="Touch flight controls">
- <div class="touch-controls"><button data-control="a" aria-label="Bank left">↶<small>BANK</small></button><button data-control="w" aria-label="Pitch up">↑<small>CLIMB</small></button><button data-control="s" aria-label="Pitch down">↓<small>DESCEND</small></button><button data-control="d" aria-label="Bank right">↷<small>BANK</small></button></div>
+<div class="flight-actions"><button type="button" id="fire" aria-label="Fire practice weapons">FIRE</button><button type="button" id="photo" aria-label="Capture reconnaissance photograph">PHOTO</button><button type="button" id="sound" aria-label="Toggle engine sounds">SOUND OFF</button><button type="button" id="pauseFlight" aria-label="Pause flight">PAUSE</button></div>
+ <div id="touch" aria-label="Touch flight controls"><div id="joyArea" aria-label="Flight joystick, move for pitch and roll"><div id="joyBase"><div id="joyKnob"></div><span>FLIGHT STICK</span></div></div>
+ <div class="touch-controls" id="legacyTouch"><button data-control="a" aria-label="Bank left">↶<small>BANK</small></button><button data-control="w" aria-label="Pitch up">↑<small>CLIMB</small></button><button data-control="s" aria-label="Pitch down">↓<small>DESCEND</small></button><button data-control="d" aria-label="Bank right">↷<small>BANK</small></button></div>
  <div class="touch-actions"><button id="throttleDown" aria-label="Reduce throttle">−</button><div class="touch-label">POWER</div><button id="throttleUp" aria-label="Increase throttle">＋</button><button id="brake" aria-label="Toggle wheel brake">BRAKE</button></div>
 </div></div>
 <section id="menu" class="overlay"><div class="panel">
 <div class="kicker">FLOWBEACON ARCADE PRESENTS</div><h1>Wings of <em>1918</em></h1><p class="intro">Take the controls of legendary Great War aircraft. Accelerate along a grass airstrip, lift into the sky, circle the airfield and land safely.</p>
-<div class="picker-head"><h2>Choose your aircraft</h2><span id="planeCount">7 historical-inspired aircraft</span></div>
+<div class="career-panel"><div><b id="pilotRank">CADET</b><span id="pilotXp">0 XP</span><small id="careerSummary">0 missions completed · 0 medals</small></div><div class="career-buttons"><button type="button" id="exportSave">EXPORT SAVE</button><button type="button" id="importSave">IMPORT SAVE</button><input id="importFile" type="file" accept="application/json,.json" hidden></div></div>
+ <div class="settings-row"><label>Flight handling <select id="difficulty"><option value="arcade">Arcade — assisted</option><option value="balanced">Balanced</option><option value="sim">Simulation — challenging</option></select></label><label>Weather <select id="weather"><option value="clear">Clear</option><option value="breezy">Breezy</option><option value="storm">Stormy</option></select></label><label>Paint scheme <select id="livery"><option value="classic">Classic</option><option value="sky">Sky Blue (100 XP)</option><option value="ace">Ace Gold (400 XP)</option></select></label></div>
+ <div class="missions-header"><h2>Select a mission</h2><span>Training to aerial combat</span></div><div id="missions" class="mission-grid" role="group" aria-label="Select a flight mission"></div>
+ <div class="picker-head"><h2>Choose your aircraft</h2><span id="planeCount">7 historical-inspired aircraft</span></div>
 <div id="planes" class="planes" role="group" aria-label="Select aircraft"></div>
 <div class="selected" id="aircraftInfo"></div>
 <div class="menu-actions"><button id="start" class="start">START FLIGHT →</button><a href="https://flowbeacon-labs.github.io/flowbeacon-arcade/" class="secondary">← Main Arcade</a></div>
-<div class="instructions"><b>Flight controls</b><p>Keyboard: <kbd>↑</kbd> throttle up, <kbd>↓</kbd> throttle down, <kbd>W/S</kbd> pitch, <kbd>A/D</kbd> bank, <kbd>Q/E</kbd> rudder, <kbd>Space</kbd> brake, <kbd>C</kbd> camera, <kbd>R</kbd> restart, <kbd>Esc</kbd> pause. On iPhone, hold the onscreen controls.</p><p>Fly at a safe speed before pulling back gently. Reduce throttle, level the wings and descend slowly for a successful landing. Flight physics and aircraft shapes are game approximations, not engineering-grade simulations.</p></div>
+<div class="instructions"><b>Flight controls</b><p>Keyboard: <kbd>↑</kbd> throttle up, <kbd>↓</kbd> throttle down, <kbd>W/S</kbd> pitch, <kbd>A/D</kbd> bank, <kbd>Q/E</kbd> rudder, <kbd>Space</kbd> brake, <kbd>C</kbd> camera, <kbd>R</kbd> restart, <kbd>Esc</kbd> pause. On iPhone, use the joystick and onscreen controls. Press <kbd>F</kbd> to fire and <kbd>P</kbd> to take a photo. Progress is saved on this device.</p><p>Fly at a safe speed before pulling back gently. Reduce throttle, level the wings and descend slowly for a successful landing. Flight physics and aircraft shapes are game approximations, not engineering-grade simulations.</p></div>
 </div></section>
-<div id="error" class="error" hidden role="alert"></div></main><script src="game.js?v=3-camera-math-fix" defer></script></body></html>
+<div id="error" class="error" hidden role="alert"></div></main><script src="game.js?v=academy-1" defer></script></body></html>
