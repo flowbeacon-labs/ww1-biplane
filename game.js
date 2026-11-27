@@ -38,6 +38,14 @@ const RUNWAYS=Object.freeze([
 ]);
 function runwayLocal(strip,x,z){return {along:strip.axis==='z'?z-strip.z:x-strip.x,across:strip.axis==='z'?x-strip.x:z-strip.z}}
 function runwayAt(x,z,margin=0){return RUNWAYS.find(strip=>{const p=runwayLocal(strip,x,z);return Math.abs(p.along)<=strip.length/2+margin&&Math.abs(p.across)<=strip.width/2+margin})||null}
+function touchdownIsHard(flight,strip,mode,stallSpeed){
+ const arcadeStrip=mode==='arcade'&&strip;
+ const sideways=strip&&Math.abs(strip.axis==='z'?Math.sin(flight.yaw):Math.cos(flight.yaw))>Math.sin(Math.PI/6);
+ return sideways||flight.vs<(arcadeStrip?-10:mode==='arcade'?-8:mode==='balanced'?-5:-3.8)||
+  Math.abs(flight.roll)>(arcadeStrip?.65:mode==='arcade'?.50:.36)||
+  Math.abs(flight.pitch)>(arcadeStrip?.42:.33)||
+  flight.speed>stallSpeed*(arcadeStrip?2.3:mode==='arcade'?2.1:1.85);
+}
 function nearestRunway(x,z){return RUNWAYS.map(strip=>{const p=runwayLocal(strip,x,z),dx=Math.max(0,Math.abs(p.across)-strip.width/2),dz=Math.max(0,Math.abs(p.along)-strip.length/2);return {strip,distance:Math.hypot(dx,dz)} }).sort((a,b)=>a.distance-b.distance)[0]}
 function runwayMesh(mesh,strip,surface){
  const len=strip.length,width=strip.width,x=strip.x,z=strip.z,alongZ=strip.axis==='z';
@@ -450,8 +458,9 @@ if(grounded){state.roll=mix(state.roll,0,Math.min(1,dt*6));state.pitch=clamp(sta
  const desired=Math.sin(state.pitch)*state.speed*.83+stall;
  state.vs=mix(state.vs,desired,Math.min(1,dt*1.4));state.y+=state.vs*dt;if(weather!=='clear'){state.x+=gust*dt;state.roll=clamp(state.roll+gust*.008*dt,-.91,.91)}
  if(state.y<=.48){state.y=.48;grounded=true;
- if(state.vs< (difficulty==='arcade'?-8:difficulty==='balanced'?-5:-3.8)||Math.abs(state.roll)>(difficulty==='arcade'?.50:.36)||Math.abs(state.pitch)>.33||state.speed>p.stall*(difficulty==='arcade'?2.1:1.85)){crashed=true;state.speed=0;notifyLanding(false);announce('Hard landing! Press R or Start Flight to retry.');$('flightState').textContent='HARD LANDING'}
- else{state.vs=0;state.pitch=0;state.roll=0;state.speed*=.80;notifyLanding(true);if(!missionFinished){const strip=runwayAt(state.x,state.z);announce(strip?'Smooth landing at '+strip.name+'! Brake to stop or take off again.':'Grass landing outside the airstrips: no mission credit.');}}
+ const strip=runwayAt(state.x,state.z);
+ if(touchdownIsHard(state,strip,difficulty,p.stall)){crashed=true;state.speed=0;notifyLanding(false);announce('Hard landing! Press R or Start Flight to retry.');$('flightState').textContent='HARD LANDING'}
+ else{state.vs=0;if(!(difficulty==='arcade'&&strip)){state.pitch=0;state.roll=0}state.speed*=.80;notifyLanding(true,strip);if(!missionFinished)announce(strip?'Smooth landing at '+strip.name+'! Brake to stop or take off again.':'Grass landing outside the airstrips: no mission credit.');}
 }}
 state.x+=Math.sin(state.yaw)*Math.cos(state.pitch)*state.speed*dt;state.z+=Math.cos(state.yaw)*Math.cos(state.pitch)*state.speed*dt;
 propAngle+=dt*(4+state.throttle*55);flightTick(dt);
@@ -522,3 +531,4 @@ reset();requestAnimationFrame(frame);
  }
 }
 })();
+
