@@ -173,17 +173,21 @@ test('Nearby-airstrip guidance chooses the nearest strip',()=>{
 });
 
 test('Mission rewards require touchdown on a marked runway, not random grass',()=>{
- const {game}=boot();game.begin();
+ const {game,element}=boot();game.begin();
+ element('brake').events.click();game.state.throttle=1;
+ for(let i=0;i<100;i++)game.step(.05);
+ game.state.pitch=.15;for(let i=0;i<160;i++)game.step(.05);
+ assert.equal(game.status().grounded,false);
  game.state.y=85;game.flightTick(.1);assert.equal(game.status().missionStage,1);
- // Mark the aircraft airborne through the normal mission update.
- game.flightTick(.1);
  const originalLandings=game.career.landings;
  Object.assign(game.state,{x:250,z:0,y:.48});
  game.notifyLanding(true);
  assert.equal(game.career.landings,originalLandings);
  assert.equal(game.status().missionFinished,false);
- // A new safe runway touchdown completes the solo mission.
- game.state.y=85;game.flightTick(.1);
+ // A second flight to the western airstrip completes the solo mission.
+ // The simulated landing sets airborne via a new takeoff from the grass field.
+ game.state.pitch=.15;game.state.speed=40;
+ for(let i=0;i<100;i++)game.step(.05);
  Object.assign(game.state,{x:-560,z:-310,y:.48});
  game.notifyLanding(true);
  assert.equal(game.status().missionFinished,true);
