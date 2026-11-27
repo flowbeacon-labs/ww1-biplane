@@ -80,6 +80,40 @@ if(theme==='picardy'){
 for(const stripInfo of RUNWAYS)runwayMesh(m,stripInfo,strip);
 return m}
 let field=makeField();
+// Decorative lights are generated once and only rendered in Evening mode.
+// These lights help pilots recognize all four airstrips on approach.
+const sunsetScenery=(()=>{
+ const m=new Mesh();
+ for(const strip of RUNWAYS){
+  const half=strip.length/2;
+  for(let d=-half+10;d<=half-10;d+=19){
+   for(const side of [-1,1]){
+    const x=strip.axis==='z'?strip.x+side*(strip.width/2+1.6):strip.x+d;
+    const z=strip.axis==='z'?strip.z+d:strip.z+side*(strip.width/2+1.6);
+    m.box(x,.26,z,.9,.35,.9,[1,.81,.38]);
+   }
+  }
+  for(const end of [-1,1]){
+   for(let i=-2;i<=2;i++){
+    const x=strip.axis==='z'?strip.x+i*2.8:strip.x+end*(half-4);
+    const z=strip.axis==='z'?strip.z+end*(half-4):strip.z+i*2.8;
+    m.box(x,.27,z,1.1,.35,1.1,[.95,.78,.46]);
+   }
+  }
+ }
+ return m;
+})();
+function makeSunDisc(){
+ const m=new Mesh(),cx=-350,cy=175,cz=940;
+ for(const [radius,color] of [[64,[.99,.68,.42]],[44,[1,.86,.57]],[30,[1,.96,.74]]]){
+  for(let i=0;i<40;i++){
+   const a=i*TAU/40,b=(i+1)*TAU/40;
+   m.tri([cx,cy,cz],[cx+Math.cos(a)*radius,cy+Math.sin(a)*radius,cz],[cx+Math.cos(b)*radius,cy+Math.sin(b)*radius,cz],color);
+  }
+ }
+ return m;
+}
+const sunsetSun=makeSunDisc();
 function makeAircraft(p){
 const m=new Mesh(),prop=new Mesh(),base=hex(p.color),wing=hex(p.wing),trim=hex(p.trim),span=p.span,body=p.body;
 const segments=[{z:-body*.53,w:.26,h:.38,y:.78},{z:-body*.24,w:.76,h:.84,y:.94},{z:body*.1,w:1.10,h:1.10,y:1.01},{z:body*.37,w:.82,h:.82,y:1.01},{z:body*.52,w:.24,h:.27,y:.98}];
@@ -447,8 +481,10 @@ if(camera===2){
 if(cameraSnap){camEye=eye.slice();camTarget=target.slice();cameraSnap=false}
 else{const factor=1-Math.exp(-6/60);camEye=camEye.map((v,i)=>mix(v,eye[i],factor));camTarget=camTarget.map((v,i)=>mix(v,target[i],factor))}
 const view=viewMatrix(camEye,camTarget),proj=projection((camera===2?73:camera===1?62:61)*Math.PI/180,w/h,.15,2300);
-draw(field,identity(),view,proj,camEye);
+if(dusk)draw(sunsetSun,identity(),view,proj,camEye);
+ draw(field,identity(),view,proj,camEye);
  draw(worldObjects,identity(),view,proj,camEye);
+ if(dusk)draw(sunsetScenery,identity(),view,proj,camEye);
  if(active&&!missionFinished&&(selectedMission===1||selectedMission===3)){
   const indexLimit=selectedMission===3?5:checkpoints.length;
   for(let i=missionIndex;i<Math.min(indexLimit,missionIndex+3);i++){
