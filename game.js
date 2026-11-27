@@ -35,7 +35,13 @@ function makeAircraft(p){
 const m=new Mesh(),prop=new Mesh(),base=hex(p.color),wing=hex(p.wing),trim=hex(p.trim),span=p.span,body=p.body;
 const segments=[{z:-body*.53,w:.26,h:.38,y:.78},{z:-body*.24,w:.76,h:.84,y:.94},{z:body*.1,w:1.10,h:1.10,y:1.01},{z:body*.37,w:.82,h:.82,y:1.01},{z:body*.52,w:.24,h:.27,y:.98}];
 for(let i=0;i<segments.length-1;i++){const a=segments[i],b=segments[i+1],corners=t=>{const z=t.z,x=t.w/2,y=t.y,k=t.h/2;return[v(-x,y-k,z),v(x,y-k,z),v(x,y+k,z),v(-x,y+k,z)]},aa=corners(a),bb=corners(b);for(let k=0;k<4;k++)m.quad(aa[k],aa[(k+1)%4],bb[(k+1)%4],bb[k],k===2?base:dim(base,.85))}
+// A visibly shaped fuselage and distinctive side striping keep the aircraft recognizable in chase view.
 m.box(0,1.52,-.3,.70,.2,1.12,D.black);m.box(0,1.66,-.3,.51,.06,.55,trim);
+m.box(-.49,1.03,body*.04,.045,.13,body*.54,trim);
+m.box(.49,1.03,body*.04,.045,.13,body*.54,trim);
+m.box(0,1.47,body*.23,.50,.08,body*.37,dim(base,.78));
+m.box(0,1.29,body*.44,.70,.12,.17,trim);
+m.box(0,1.63,-body*.15,.59,.06,.26,D.wood);
 m.tube(v(0,.98,body*.52),v(0,.98,body*.57),.35,D.steel,11);
 const levels=p.levels===3?[.83,1.89,2.97]:[.87,2.32];
 for(let k=0;k<levels.length;k++){const y=levels[k],w=p.name==='Nieuport 17'&&k===0?span*.57:p.levels===3&&k===0?span*.81:span;
@@ -71,12 +77,12 @@ function choose(i){selected=i;model=makeAircraft(planes[i]);const p=planes[i];$(
 $('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+'</small></button>').join('');
 document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>choose(+b.dataset.index)));choose(0);
 function announce(t){$('notice').textContent=t}
-function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
+function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});snapCamera();grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
 let last=performance.now();
 function begin(){reset();active=true;paused=false;$('menu').hidden=true;last=performance.now()}
 $('start').addEventListener('click',()=>{if(active&&paused&&!crashed){paused=false;$('menu').hidden=true;last=performance.now()}else begin()});
 function pause(){if(!active)return;paused=!paused;$('menu').hidden=!paused;$('start').textContent=paused?'RESUME FLIGHT →':'START FLIGHT →'}
-$('camera').addEventListener('click',()=>{camera=(camera+1)%3;$('camName').textContent=['CHASE','CLOSE','COCKPIT'][camera]});
+$('camera').addEventListener('click',()=>{camera=(camera+1)%3;snapCamera();$('camName').textContent=['CHASE','CLOSE','COCKPIT'][camera]});
 const keyMap={KeyW:'w',KeyS:'s',KeyA:'a',KeyD:'d',KeyQ:'q',KeyE:'e',ArrowUp:'up',ArrowDown:'down'};
 document.addEventListener('keydown',e=>{let k=keyMap[e.code];if(k){keys.add(k);e.preventDefault()}if(e.repeat)return;if(e.code==='Space'){brake=!brake;$('brake').classList.toggle('on',brake);e.preventDefault()}if(e.code==='KeyC')$('camera').click();if(e.code==='KeyR'){begin()}if(e.code==='Escape')pause()});
 document.addEventListener('keyup',e=>{let k=keyMap[e.code];if(k){keys.delete(k);e.preventDefault()}});
@@ -102,14 +108,26 @@ propAngle+=dt*(4+state.throttle*55);
 $('speed').textContent=Math.round(state.speed*3.6);$('alt').textContent=Math.round(Math.max(0,state.y-.48));$('vs').textContent=state.vs.toFixed(1);$('power').textContent=Math.round(state.throttle*100);$('powerBar').style.width=Math.round(state.throttle*100)+'%';
 if(!crashed){$('flightState').textContent=grounded?(brake?'BRAKES ON':state.speed>3?'TAKEOFF ROLL':'ON RUNWAY'):(state.speed<p.stall?'STALL WARNING':state.vs>1?'CLIMBING':state.vs< -1?'DESCENDING':'LEVEL FLIGHT');if(!grounded&&state.speed<p.stall)announce('STALL WARNING! Lower the nose and increase power.');else if(grounded&&brake&&state.throttle>.4)announce('Release the brake before takeoff.')}
 }
-let camEye=[0,11,-30],camTarget=[0,2,15];
+// Start aligned behind the parked aircraft; do not ease from a camera hundreds of feet away.
+let camEye=[0,5.7,-153],camTarget=[0,2.0,-138],cameraSnap=true;
+function snapCamera(){cameraSnap=true;}
 function render(){const dpi=Math.min(window.devicePixelRatio||1,1.6),w=Math.max(1,Math.round(cv.clientWidth*dpi)),h=Math.max(1,Math.round(cv.clientHeight*dpi));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;gl.viewport(0,0,w,h)}
 gl.clearColor(.61,.77,.87,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 const f=[Math.sin(state.yaw)*Math.cos(state.pitch),Math.sin(state.pitch),Math.cos(state.yaw)*Math.cos(state.pitch)],pos=[state.x,state.y,state.z];let eye,target;
-if(camera===2){eye=add(pos,add(f.map(v=>v*1.9),[0,1.85,0]));target=add(eye,f.map(v=>v*45))}
-else{const d=camera===1?12:24,h=camera===1?4.5:9;eye=add(pos,add(f.map(v=>-v*d),[0,h,0]));target=add(pos,add(f.map(v=>v*23),[0,1.4,0]))}
-camEye=camEye.map((v,i)=>mix(v,eye[i],.11));camTarget=camTarget.map((v,i)=>mix(v,target[i],.11));
-const view=viewMatrix(camEye,camTarget),proj=projection((camera===2?74:67)*Math.PI/180,w/h,.15,2300);
+if(camera===2){
+ eye=add(pos,add(f.map(n=>n*1.0),[0,1.48,0]));
+ target=add(eye,f.map(n=>n*40));
+}else{
+ // The previous camera looked 23 metres ahead of the aircraft rather than AT it,
+ // projecting the fuselage below the viewport. Keep the model near screen centre.
+ const distance=camera===1?7.3:13.5;
+ const lift=camera===1?3.2:5.3;
+ eye=add(pos,add(f.map(n=>-n*distance),[0,lift,0]));
+ target=add(pos,add(f.map(n=>n*2.3),[0,1.4,0]));
+}
+if(cameraSnap){camEye=eye.slice();camTarget=target.slice();cameraSnap=false}
+else{const factor=1-Math.exp(-6/60);camEye=camEye.map((v,i)=>mix(v,eye[i],factor));camTarget=camTarget.map((v,i)=>mix(v,target[i],factor))}
+const view=viewMatrix(camEye,camTarget),proj=projection((camera===2?73:camera===1?62:61)*Math.PI/180,w/h,.15,2300);
 draw(field,identity(),view,proj,camEye);
 const orientation=multiply(yaw(state.yaw),multiply(pitch(-state.pitch),roll(-state.roll))),base=multiply(move(...pos),orientation);
 draw(model.mesh,base,view,proj,camEye);draw(model.prop,multiply(base,multiply(move(...model.offset),roll(propAngle))),view,proj,camEye)
