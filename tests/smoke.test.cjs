@@ -13,7 +13,7 @@ function boot() {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,notifyLanding};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,notifyLanding,lighting:()=>timeOfDay};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -192,4 +192,43 @@ test('Mission rewards require touchdown on a marked runway, not random grass',()
  game.notifyLanding(true);
  assert.equal(game.status().missionFinished,true);
  assert.equal(game.career.landings,originalLandings+1);
+});
+
+test('Day is the default and Evening selection persists without resetting the mission',()=>{
+ const {game,element,saved}=boot();
+ assert.equal(game.lighting(),'day');
+ game.begin();
+ const sessionAltitude=game.state.y;
+ element('timeOfDay').value='evening';
+ element('timeOfDay').events.change();
+ assert.equal(game.lighting(),'evening');
+ assert.equal(game.state.y,sessionAltitude);
+ assert.equal(JSON.parse(saved.get('flowbeacon-wings-career-v1')).settings.timeOfDay,'evening');
+ game.render(); // Evening sun and lighted landing strips draw without errors
+ element('timeOfDay').value='day';
+ element('timeOfDay').events.change();
+ assert.equal(game.lighting(),'day');
+ game.render();
+});
+test('Time of day is restored to Day after confirmed career reset',()=>{
+ const {game,element,ctx,saved}=boot();
+ element('timeOfDay').value='evening';
+ element('timeOfDay').events.change();
+ ctx.window.confirm=()=>true;
+ element('resetCareer').events.click();
+ assert.equal(game.lighting(),'day');
+ assert.equal(element('timeOfDay').value,'day');
+ assert.equal(JSON.parse(saved.get('flowbeacon-wings-career-v1')).settings.timeOfDay,'day');
+});
+test('All airfield maps retain their runway geometry in Evening mode',()=>{
+ const {game,element}=boot();
+ element('timeOfDay').value='evening';
+ element('timeOfDay').events.change();
+ for(const setting of ['flanders','picardy','italy']){
+  element('airfield').value=setting;
+  element('airfield').events.change();
+  game.render();
+  assert.equal(game.RUNWAYS.length,4);
+  for(const runway of game.RUNWAYS)assert.equal(game.runwayAt(runway.x,runway.z).id,runway.id);
+ }
 });
