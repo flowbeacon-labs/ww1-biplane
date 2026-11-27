@@ -24,7 +24,7 @@ function boot() {
       files:[],
       style:{width:'',transform:''},
       events:{},
-      classList:(()=>{const flags=new Set();return{add(key){flags.add(key);},remove(key){flags.delete(key);},contains(key){return flags.has(key);},toggle(key){if(flags.has(key)){flags.delete(key);return false;}flags.add(key);return true;}}})(),
+      classList:(()=>{const flags=new Set();return{add(key){flags.add(key);},remove(key){flags.delete(key);},contains(key){return flags.has(key);},toggle(key,force){if(force===true){flags.add(key);return true;}if(force===false){flags.delete(key);return false;}if(flags.has(key)){flags.delete(key);return false;}flags.add(key);return true;}}})(),
       addEventListener(type,fn){this.events[type]=fn;},
       querySelectorAll(){return[];}, setAttribute(){},setPointerCapture(){},
       getBoundingClientRect(){return{left:0,top:0,width:110,height:110};},
