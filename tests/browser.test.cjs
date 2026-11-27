@@ -30,7 +30,19 @@ const path=require('node:path');
   errorText:document.getElementById('error').textContent,
   text:document.getElementById('flightState').textContent,
  }));
- console.log('AFTER START',JSON.stringify(result));console.log(errors.join('\n'));
+ console.log('AFTER START',JSON.stringify(result));console.log(errors.join('\\n'));
+ const tutorial=await page.evaluate(()=>({
+  missionBarVisible:getComputedStyle(document.querySelector('.mission-hud')).display!=='none',
+  coachVisible:getComputedStyle(document.getElementById('landingCoach')).display!=='none',
+  coachTitle:document.getElementById('coachTitle').textContent,
+  active:document.getElementById('app').classList.contains('flight-active')
+ }));
+ console.log('LANDING TUTORIAL',JSON.stringify(tutorial));
+ if(tutorial.missionBarVisible||!tutorial.coachVisible||!tutorial.active)throw Error('Flight tutorial layout failed: '+JSON.stringify(tutorial));
+ await page.locator('#coachToggle').click();
+ const hiddenTips=await page.evaluate(()=>document.getElementById('landingCoach').classList.contains('coach-collapsed'));
+ if(!hiddenTips)throw Error('Hide landing tips did not work');
+ await page.locator('#coachToggle').click();
  await page.screenshot({path:'flight-startup.png'});
  for(const width of [590,900,1280]){
   await page.setViewportSize({width,height:800});
