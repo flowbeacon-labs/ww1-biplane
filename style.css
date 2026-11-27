@@ -30,3 +30,26 @@
 .navigation-actions{display:flex;align-items:center;gap:7px;pointer-events:auto;flex-wrap:wrap}
 .top .plane-back{border:1px solid #f6d69099;border-radius:12px;background:#d9b76c;color:#16243a;padding:10px 12px;font-weight:900;font-size:12px;white-space:nowrap;text-shadow:none}
 @media(max-width:680px){.navigation-actions{gap:4px}.top .plane-back{font-size:10px;padding:8px 7px}.top .home{padding:8px 7px}.brand{letter-spacing:.06em}.brand b{font-size:12px}}
+
+/* Clear-view HUD: gameplay is unobstructed until the player requests detailed stats. */
+#app:not(.stats-open) .gauges,
+#app:not(.stats-open) .telemetry,
+#app:not(.stats-open) .flight-info,
+#app:not(.stats-open) .flight-radar {display:none}
+.top .stats-toggle {border:1px solid #d9d5a58c;background:#263f55d9;color:#f8e5ad;border-radius:12px;padding:10px 12px;font-size:11px;font-weight:900;white-space:nowrap;text-shadow:none}
+#app.stats-open .top .stats-toggle{background:#cfb77f;color:#142538}
+#app.stats-open .gauges{max-width:490px;gap:5px}
+#app.stats-open .gauge{min-width:95px;padding:6px 9px}
+#app.stats-open .gauge strong{font-size:18px}
+#app.stats-open .mission-hud{margin-top:6px}
+#app.stats-open .flight-radar{top:240px}
+@media(max-width:680px) {
+ .top .stats-toggle{padding:8px 7px;font-size:10px}
+ #app.stats-open .gauges{max-width:100%;gap:3px}
+ #app.stats-open .gauge{min-width:69px;padding:5px;flex:1}
+ #app.stats-open .gauge strong{font-size:16px}
+ #app.stats-open .telemetry{display:none}
+ #app.stats-open .flight-info{display:none}
+ #app.stats-open .flight-radar{width:66px;height:66px;top:205px;right:6px}
+ .mission-hud{max-width:min(480px,100%);background:#0a1c31b8;border-color:#e5d29866}
+}
