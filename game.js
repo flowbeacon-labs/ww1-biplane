@@ -92,8 +92,11 @@ const missions=[
  {id:'emergency',name:'Engine Emergency',description:'Fly to 75 m, then glide down with failing engine power.',goal:'Land with a damaged engine',award:220},
  {id:'combat',name:'First Dogfight',description:'Track and disable the training opponent in a safe practice engagement.',goal:'Disable the training aircraft and return',award:250}
 ];
+// Flight-school rings remain well clear of the runway corridor (|x| <= 14 m).
+// Start east of the field, loop over farmland, and finish west of the runway.
 const checkpoints=[
- [0,82,70],[110,105,150],[215,110,220],[260,120,350],[160,120,445],[0,100,480],[-140,115,405],[-235,100,300],[-185,90,160],[-65,80,35]
+ [95,82,95],[175,105,175],[270,110,265],[335,120,375],[240,120,480],
+ [105,100,515],[-105,115,485],[-245,100,365],[-285,90,215],[-110,80,95]
 ];
 const landmarks=[
  {name:'Village',x:-325,z:300,y:48},
@@ -343,6 +346,13 @@ function returnToPlaneSelection(){
  if(typeof document.getElementById==='function')$('planes').scrollIntoView?.({behavior:'smooth',block:'center'});
 }
 $('backToPlanes').addEventListener('click',returnToPlaneSelection);
+const statsButton=$('hudToggle');
+statsButton.addEventListener('click',()=>{
+ const expanded=$('app').classList.toggle('stats-open');
+ statsButton.setAttribute('aria-pressed',String(expanded));
+ statsButton.textContent=expanded?'HIDE STATS':'STATS';
+});
+
 $('camera').addEventListener('click',()=>{camera=(camera+1)%3;snapCamera();$('camName').textContent=['CHASE','CLOSE','COCKPIT'][camera]});
 const keyMap={KeyW:'w',KeyS:'s',KeyA:'a',KeyD:'d',KeyQ:'q',KeyE:'e',ArrowUp:'up',ArrowDown:'down'};
 document.addEventListener('keydown',e=>{let k=keyMap[e.code];if(k){keys.add(k);e.preventDefault()}if(e.repeat)return;if(e.code==='Space'){brake=!brake;$('brake').classList.toggle('on',brake);e.preventDefault()}if(e.code==='KeyC')$('camera').click();if(e.code==='KeyR'){begin()}if(e.code==='Escape')pause();if(e.code==='KeyF')shoot();if(e.code==='KeyP')takePhoto();if(e.code==='KeyM')pause()});
