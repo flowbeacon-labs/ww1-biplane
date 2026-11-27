@@ -26,17 +26,45 @@ class Mesh{constructor(){this.pos=[];this.nrm=[];this.col=[];this.buf=null}
  upload(){if(this.buf)return;this.count=this.pos.length/3;this.buf=[this.pos,this.nrm,this.col].map(data=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);return b})}
  destroy(){if(this.buf){for(const b of this.buf)gl.deleteBuffer(b);this.buf=null}}
 }
+
+// World-space runway metadata shared by rendering, touchdown detection and navigation.
+// Axis "z" means length runs north/south; "x" runs east/west.
+const RUNWAYS=Object.freeze([
+ {id:'home',name:'Home Airfield',x:0,z:0,length:610,width:28,axis:'z'},
+ {id:'west',name:'Western Meadow Strip',x:-560,z:-310,length:310,width:26,axis:'z'},
+ {id:'east',name:'Eastern Patrol Strip',x:565,z:-310,length:320,width:26,axis:'z'},
+ {id:'north',name:'Northern Farm Strip',x:0,z:635,length:320,width:28,axis:'x'}
+]);
+function runwayLocal(strip,x,z){return {along:strip.axis==='z'?z-strip.z:x-strip.x,across:strip.axis==='z'?x-strip.x:z-strip.z}}
+function runwayAt(x,z,margin=0){return RUNWAYS.find(strip=>{const p=runwayLocal(strip,x,z);return Math.abs(p.along)<=strip.length/2+margin&&Math.abs(p.across)<=strip.width/2+margin})||null}
+function nearestRunway(x,z){return RUNWAYS.map(strip=>{const p=runwayLocal(strip,x,z),dx=Math.max(0,Math.abs(p.across)-strip.width/2),dz=Math.max(0,Math.abs(p.along)-strip.length/2);return {strip,distance:Math.hypot(dx,dz)} }).sort((a,b)=>a.distance-b.distance)[0]}
+function runwayMesh(mesh,strip,surface){
+ const len=strip.length,width=strip.width,x=strip.x,z=strip.z,alongZ=strip.axis==='z';
+ const box=(offset,across,w,l,c,y=.07)=>alongZ?mesh.box(x+across,y,z+offset,w,.06,l,c):mesh.box(x+offset,y,z+across,l,.06,w,c);
+ box(0,0,width,len,surface,.03);
+ for(let d=-len/2+17;d<len/2-15;d+=27)box(d,0,1.25,12,D.white,.088);
+ for(const side of [-1,1])for(let d=-len/2+12;d<len/2-8;d+=17)box(d,side*(width/2-1.2),.48,3,D.white,.089);
+ for(const d of [-len/2+5,len/2-5])box(d,0,width-3,1,D.white,.091);
+ // Threshold markers, windsock, a small hangar and a radio marker identify each strip.
+ if(strip.id!=='home'){
+  const hx=alongZ?x+width/2+24:x+len/2+26,hz=alongZ?z:z+width/2+25;
+  mesh.box(hx,4,hz,18,8,14,D.wood);mesh.box(hx,8.8,hz,21,2,17,D.steel);
+  const wx=alongZ?x-width/2-11:x-len/2-11,wz=alongZ?z-len/2+38:z-width/2-10;
+  mesh.tube([wx,0,wz],[wx,10,wz],.10,D.steel,5);
+  mesh.box(wx+1.4,10,wz,3.3,.9,1.25,D.red);
+ }
+}
+
 function makeField(theme='flanders'){const m=new Mesh();
 const grass=theme==='picardy'?[.48,.47,.30]:theme==='italy'?[.33,.50,.32]:D.grass;
 const strip=theme==='picardy'?[.63,.52,.36]:theme==='italy'?[.55,.57,.46]:D.strip;
-m.box(0,-.30,0,1700,.55,1700,grass);m.box(0,.01,0,28,.06,610,strip);
-for(let z=-280;z<300;z+=28)m.box(0,.049,z,1.2,.035,11,D.white);
-for(const x of [-15,15])for(let z=-294;z<=294;z+=15)m.box(x,.07,z,.5,.08,.7,D.white);
+m.box(0,-.30,0,1700,.55,1700,grass);
+for(const stripInfo of RUNWAYS)runwayMesh(m,stripInfo,strip);
 let seed=42;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)|0;return(seed>>>0)/4294967296};
 for(let i=0;i<260;i++){const x=(rand()-.5)*1550,z=(rand()-.5)*1550;if(Math.abs(x)<24&&Math.abs(z)<320)continue;m.box(x,.004,z,2+rand()*9,.025,3+rand()*9,rand()<.5?grass:theme==='picardy'?[.55,.52,.34]:D.patch)}
 for(const x of [-83,-50,53,88]){m.box(x,5.5,78,27,11,27,theme==='italy'?D.white:D.wood);m.box(x,11.9,78,30,2,30,theme==='picardy'?D.red:D.steel);m.box(x,5.6,64,17,9,.45,D.black)}
 for(let i=0;i<62;i++){let x=(rand()-.5)*1450,z=(rand()-.5)*1450;if(Math.abs(x)<130&&Math.abs(z)<365)continue;let h=6+rand()*10;m.tube(v(x,.1,z),v(x,h*.42,z),.46,D.wood,5);m.tube(v(x,h*.4,z),v(x,h,z),2,rand()<.5?D.grass:D.patch,8)}
-for(const z of [-275,275])m.box(0,.11,z,35,.2,1.2,D.white);
+// Additional landing strips and threshold markings are generated above.
 if(theme==='italy'){
  for(const [x,z,h] of [[-640,380,235],[-410,700,330],[390,680,290],[670,310,200],[-680,-460,250],[650,-580,245]]){
   const a=[x-190,0,z],b=[x+190,0,z],c=[x,h,z+12];
