@@ -4,6 +4,22 @@
 
 Choose **Time of day → Day** for bright daylight or **Time of day → Evening** for sunset-colored skies, warm low-angle aircraft and terrain lighting, a visible sun, and runway edge/threshold lights. The choice applies to Flanders, Picardy and Italian Valley, with all four airstrips preserved. Day and Evening can also be combined with Clear, Breezy or Stormy weather. Switching the time does not reset your current mission, and the choice is stored with your pilot career data.
 
+## First Solo Flight: Step-by-step landing tutorial
+
+Choose **Arcade — assisted**, **Clear** weather, **Day**, and preferably the **Curtiss JN-4 Jenny** (lower simulated stall speed) or the Sopwith Camel. Start **First Solo Flight**.
+
+The full mission bar is hidden while flying. A smaller **Landing School** panel is shown for this tutorial only. Tap **HIDE TIPS** to collapse it, or **SHOW TIPS** to reopen it. Press **PAUSE** to return to the mission selector. The panel automatically updates using current aircraft speed, altitude, heading, sink rate and distance to the closest runway.
+
+1. **Take off** — Release BRAKE and hold + POWER. The panel gives an aircraft-specific speed at which to begin pulling back gently on the stick (W or joystick up). Do not pull steeply before reaching it.
+2. **Climb** — Build altitude gradually to **80 m**. Hold moderate power and keep the nose only gently elevated.
+3. **Turn toward a strip** — After 80 m, the guide selects the nearest marked airstrip and instructs **LEFT** or **RIGHT** turns. Use short A/D inputs or move the joystick left/right briefly, then release it to level the wings. Begin descending slowly toward about **50 m** while still some distance away.
+4. **Line up and slow** — Approach the runway *along* its length, not sideways. The tutor displays a target heading (for example, 180° for a southbound approach), a target speed derived from the selected plane and instructions to reduce throttle to roughly 20–35% if too fast. Ease down toward **15–20 m**, then **8–12 m** once above the runway.
+5. **Touch down gently** — Keep wings and nose nearly level, speed close to the indicated target and vertical descent gentler than around **3 m/s**. Avoid sideways runway approaches: oblique landings count as **hard landings** even in Arcade mode. Brake after touchdown.
+
+**Typical simulated approach speeds (approximate):** Sopwith Camel around **99 km/h**, Curtiss JN-4 Jenny around **84 km/h**. The instructor displays a dynamic target for the aircraft you select. These are not real aircraft operating speeds.
+
+A safe touchdown on one of the four marked airstrips completes the first mission. A grass landing outside the runway does not award mission landing credit. Even in Arcade mode, a very steep, fast or sideways landing may still be hard.
+
 ## Quick start on iPhone
 1. Open https://flowbeacon-labs.github.io/ww1-biplane/ in Safari and turn the phone to landscape where practical.
 2. Select **First Solo Flight**, **Arcade** handling, **Clear** weather, and the **Sopwith Camel**.
