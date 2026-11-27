@@ -28,6 +28,7 @@
 
 /* Persistent return to aircraft selection, separate from the Arcade navigation. */
 .navigation-actions{display:flex;align-items:center;gap:7px;pointer-events:auto;flex-wrap:wrap}
+.top{flex-wrap:wrap}.top .brand{min-width:0}.top .navigation-actions{min-width:0}
 .top .plane-back{border:1px solid #f6d69099;border-radius:12px;background:#d9b76c;color:#16243a;padding:10px 12px;font-weight:900;font-size:12px;white-space:nowrap;text-shadow:none}
 @media(max-width:680px){.navigation-actions{gap:4px}.top .plane-back{font-size:10px;padding:8px 7px}.top .home{padding:8px 7px}.brand{letter-spacing:.06em}.brand b{font-size:12px}}
 
@@ -57,3 +58,4 @@
 /* Nearby landing fields: small navigation cue with no bulky instrument panel. */
 .runway-guide{margin-top:5px;align-self:flex-start;background:#13354aca;color:#ffe4a1;font-size:11px;font-weight:800;line-height:1.2;padding:6px 9px;border:1px solid #fff2b344;border-radius:8px;max-width:min(410px,90%);white-space:normal}
 @media(max-width:680px){.runway-guide{font-size:9px;padding:4px 7px;margin-top:3px;max-width:80%}}
+

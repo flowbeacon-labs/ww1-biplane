@@ -13,7 +13,7 @@ function boot() {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,notifyLanding,lighting:()=>timeOfDay};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -161,6 +161,35 @@ test('Four separate airstrips have marked touchdown zones',()=>{
  assert.equal(game.runwayAt(250,0),null);
 });
 
+test('Oblique touchdown is hard on either runway axis and in every mode',()=>{
+ const {game}=boot();
+ const flight={yaw:Math.PI/3,vs:-2,roll:0,pitch:0,speed:20};
+ for(const mode of ['arcade','balanced','sim']){
+  assert.equal(game.touchdownIsHard(flight,game.RUNWAYS[0],mode,19),true);
+  assert.equal(game.touchdownIsHard({...flight,yaw:0},game.RUNWAYS[3],mode,19),true);
+  assert.equal(game.touchdownIsHard({...flight,yaw:Math.PI},game.RUNWAYS[0],mode,19),false);
+ }
+});
+
+test('Arcade marked-strip touchdown forgives moderate impact and rolls out naturally',()=>{
+ const {game,element}=boot();game.begin();
+ const strip=game.RUNWAYS[0],impact={yaw:0,vs:-9,roll:.55,pitch:.37,speed:20};
+ assert.equal(game.touchdownIsHard(impact,strip,'arcade',19),false);
+ assert.equal(game.touchdownIsHard(impact,strip,'balanced',19),true);
+ assert.equal(game.touchdownIsHard(impact,null,'arcade',19),true);
+ element('brake').events.click();game.state.throttle=1;
+ for(let index=0;index<100;index++)game.step(.05);
+ game.state.pitch=.15;
+ for(let index=0;index<160;index++)game.step(.05);
+ assert.equal(game.status().grounded,false);
+ game.state.y=85;game.flightTick(.05);
+ Object.assign(game.state,{x:0,z:0,y:.481,yaw:0,vs:-3,roll:.1,pitch:-.25,speed:20,throttle:0});
+ game.step(.05);
+ assert.equal(game.status().crashed,false);
+ assert.equal(game.status().missionFinished,true);
+ assert.ok(game.state.roll>0,'Arcade touchdown keeps bank for the ground rollout');
+});
+
 test('Nearby-airstrip guidance chooses the nearest strip',()=>{
  const {game,element}=boot();
  const west=game.RUNWAYS.find(s=>s.id==='west');
@@ -232,3 +261,4 @@ test('All airfield maps retain their runway geometry in Evening mode',()=>{
   for(const runway of game.RUNWAYS)assert.equal(game.runwayAt(runway.x,runway.z).id,runway.id);
  }
 });
+
