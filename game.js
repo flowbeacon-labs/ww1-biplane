@@ -131,7 +131,7 @@ const landmarks=[
  {name:'River Bridge',x:345,z:315,y:47},
  {name:'Railway Station',x:-330,z:-285,y:48}
 ];
-const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic',airfield:'flanders'},missionsCompleted:0});
+const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic',airfield:'flanders',timeOfDay:'day'},missionsCompleted:0});
 function cleanCareer(value){
  const c=fallbackProgress();if(!value||typeof value!=='object')return c;
  for(const k of ['xp','flights','landings','medals'])c[k]=Math.max(0,Math.min(10000000,Number.isFinite(value[k])?Math.floor(value[k]):0));
@@ -139,6 +139,7 @@ function cleanCareer(value){
  if(value.settings&&typeof value.settings==='object'){
   if(DIFFICULTIES.includes(value.settings.difficulty))c.settings.difficulty=value.settings.difficulty;
   if(WEATHERS.includes(value.settings.weather))c.settings.weather=value.settings.weather;
+  if(['day','evening'].includes(value.settings.timeOfDay))c.settings.timeOfDay=value.settings.timeOfDay;
   if(['classic','sky','ace'].includes(value.settings.livery))c.settings.livery=value.settings.livery;
   if(Object.prototype.hasOwnProperty.call(AIRFIELDS,value.settings.airfield))c.settings.airfield=value.settings.airfield;
  }
@@ -148,7 +149,7 @@ function cleanCareer(value){
 function loadCareer(){try{return cleanCareer(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'))}catch{return fallbackProgress()}}
 let lastLandingStrip=null;
 let career=loadCareer(),selectedMission=0,missionTime=0,missionScore=0,missionStage=0,missionIndex=0,missionFinished=false,airborne=false,damage=100,fuel=100,trainingShots=0,photoDone=new Set(),formationClock=0,weatherClock=0,fireCooldown=0,smokeTime=0,missionMarks=[],missionRender=[],enemyDefeated=false;
-let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,airfield=career.settings.airfield,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
+let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,airfield=career.settings.airfield,timeOfDay=career.settings.timeOfDay,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
 const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,color:'#b8c8d0'}],bots=[];
 const aiShape=makeAircraft(planes[3]),enemyShape=makeAircraft(planes[1]);
 const markerMeshes=(()=>{const ring=new Mesh(),gold=D.gold;for(let i=0;i<40;i++){const a=i*TAU/40,b=(i+1)*TAU/40;ring.tube([Math.cos(a)*10,Math.sin(a)*10,0],[Math.cos(b)*10,Math.sin(b)*10,0],.58,i%2?D.white:gold,5)}
@@ -176,7 +177,7 @@ const worldObjects=(()=>{const m=new Mesh();const r=()=>Math.random();
  }
  return m;
 })();
-function saveCareer(){career.settings={difficulty,weather,livery:paintScheme,airfield};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
+function saveCareer(){career.settings={difficulty,weather,livery:paintScheme,airfield,timeOfDay};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
 function rankTitle(){return career.xp>=2500?'ACE PILOT':career.xp>=1250?'SQUADRON LEADER':career.xp>=600?'FLYING OFFICER':career.xp>=200?'TRAINEE PILOT':'FLIGHT CADET'}
 function refreshCareer(){
  $('pilotRank').textContent=rankTitle();$('pilotXp').textContent=career.xp+' XP';
@@ -195,6 +196,7 @@ function setLivery(){
 }
 function syncSettings(){
  difficulty=$('difficulty').value;weather=$('weather').value;paintScheme=$('livery').value;
+ timeOfDay=$('timeOfDay').value==='evening'?'evening':'day';
  $('app').dataset.weather=weather;
  const newAirfield=AIRFIELDS[$('airfield').value]?$('airfield').value:'flanders';
  if(newAirfield!==airfield){field.destroy();airfield=newAirfield;field=makeField(airfield)}
@@ -202,7 +204,7 @@ function syncSettings(){
  if((paintScheme==='sky'&&career.xp<100)||(paintScheme==='ace'&&career.xp<400)){paintScheme='classic';$('livery').value='classic';announce('Earn XP to unlock that paint scheme.')}
  setLivery();saveCareer();
 }
-for(const id of ['difficulty','weather','livery','airfield']){$(id).value=career.settings[id];$(id).addEventListener('change',syncSettings)}
+for(const id of ['difficulty','weather','livery','airfield','timeOfDay']){$(id).value=career.settings[id];$(id).addEventListener('change',syncSettings)}
 field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
@@ -329,11 +331,11 @@ $('importSave').addEventListener('click',()=>$('importFile').click());
 $('resetCareer').addEventListener('click',()=>{
  if(!window.confirm('Delete saved ranks, XP, medals and mission records on this device? This cannot be undone without an exported backup.'))return;
  career=fallbackProgress();difficulty='arcade';weather='clear';paintScheme='classic';
- for(const id of ['difficulty','weather','livery','airfield'])$(id).value=career.settings[id];airfield='flanders';field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
+ for(const id of ['difficulty','weather','livery','airfield','timeOfDay'])$(id).value=career.settings[id];timeOfDay='day';airfield='flanders';field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
  saveCareer();selectedMission=0;missionPending=true;choose(0);
  announce('Pilot career reset. Export a backup before resetting next time.');
 });
-$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;for(const id of ['difficulty','weather','livery','airfield'])$(id).value=career.settings[id];airfield=career.settings.airfield;field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
+$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay'])$(id).value=career.settings[id];airfield=career.settings.airfield;field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
 function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
@@ -355,10 +357,10 @@ function roll(a){const c=Math.cos(a),s=Math.sin(a);return[c,s,0,0,-s,c,0,0,0,0,1
 function projection(fovy,aspect,near,far){const f=1/Math.tan(fovy/2);return[f/aspect,0,0,0,0,f,0,0,0,0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0]}
 function viewMatrix(eye,target){const f=unit(sub(target,eye)),r=unit(cross([0,1,0],f)),u=cross(f,r);return[r[0],u[0],-f[0],0,r[1],u[1],-f[1],0,r[2],u[2],-f[2],0,-dot(r,eye),-dot(u,eye),dot(f,eye),1]}
 function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s}
-const vsource='attribute vec3 aPos,aNrm,aCol;uniform mat4 uModel,uView,uProj;uniform vec3 uEye;varying vec3 vCol;varying float fog;void main(){vec4 pos=uModel*vec4(aPos,1.);vec3 n=normalize(mat3(uModel)*aNrm);float l=.59+.41*max(0.,dot(n,normalize(vec3(-.44,.83,.3))));vCol=aCol*l;fog=clamp((distance(pos.xyz,uEye)-210.)/950.,0.,1.);gl_Position=uProj*uView*pos;}';
-const fsource='precision mediump float;varying vec3 vCol;varying float fog;void main(){gl_FragColor=vec4(mix(vCol,vec3(.65,.78,.84),fog),1.);}';
+const vsource='attribute vec3 aPos,aNrm,aCol;uniform mat4 uModel,uView,uProj;uniform vec3 uEye;uniform float uDusk;varying vec3 vCol;varying float fog;void main(){vec4 pos=uModel*vec4(aPos,1.);vec3 n=normalize(mat3(uModel)*aNrm);float day=max(0.,dot(n,normalize(vec3(-.44,.83,.3))));float dusk=max(0.,dot(n,normalize(vec3(-.85,.43,.25))));float l=mix(.59+.41*day,.37+.44*dusk,uDusk);vCol=aCol*l;fog=clamp((distance(pos.xyz,uEye)-210.)/950.,0.,1.);gl_Position=uProj*uView*pos;}';
+const fsource='precision mediump float;uniform float uDusk;varying vec3 vCol;varying float fog;void main(){vec3 haze=mix(vec3(.65,.78,.84),vec3(.84,.56,.47),uDusk);gl_FragColor=vec4(mix(vCol,haze,fog),1.);}';
 const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vsource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fsource));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
-const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k));
+const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k)),duskUniform=gl.getUniformLocation(program,'uDusk');
 function draw(mesh,mat,view,proj,eye){mesh.upload();for(const [loc,m] of [[uniforms[0],mat],[uniforms[1],view],[uniforms[2],proj]])gl.uniformMatrix4fv(loc,false,new Float32Array(m));gl.uniform3fv(uniforms[3],new Float32Array(eye));mesh.buf.forEach((b,i)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(attributes[i]);gl.vertexAttribPointer(attributes[i],3,gl.FLOAT,false,0,0)});gl.drawArrays(gl.TRIANGLES,0,mesh.count)}
 function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}if(selected!==i)planePending=true;selected=i;setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
 $('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+(p.unlock?' · '+p.unlock+' XP unlock':'')+'</small></button>').join('');
@@ -425,7 +427,11 @@ if(!crashed){$('flightState').textContent=grounded?(brake?'BRAKES ON':state.spee
 let camEye=[0,5.7,-153],camTarget=[0,2.0,-138],cameraSnap=true;
 function snapCamera(){cameraSnap=true;}
 function render(){const dpi=Math.min(window.devicePixelRatio||1,1.6),w=Math.max(1,Math.round(cv.clientWidth*dpi)),h=Math.max(1,Math.round(cv.clientHeight*dpi));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;gl.viewport(0,0,w,h)}
-if(weather==='storm')gl.clearColor(.42,.52,.60,1);else if(weather==='breezy')gl.clearColor(.57,.72,.79,1);else gl.clearColor(.61,.77,.87,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+const dusk=timeOfDay==='evening'?1:0;
+ if(dusk){if(weather==='storm')gl.clearColor(.34,.30,.39,1);else if(weather==='breezy')gl.clearColor(.75,.49,.48,1);else gl.clearColor(.95,.59,.44,1)}
+ else if(weather==='storm')gl.clearColor(.42,.52,.60,1);else if(weather==='breezy')gl.clearColor(.57,.72,.79,1);else gl.clearColor(.61,.77,.87,1);
+ gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ gl.uniform1f(duskUniform,dusk);
 const f=[Math.sin(state.yaw)*Math.cos(state.pitch),Math.sin(state.pitch),Math.cos(state.yaw)*Math.cos(state.pitch)],pos=[state.x,state.y,state.z];let eye,target;
 if(camera===2){
  eye=add(pos,add(f.map(n=>n*1.0),[0,1.48,0]));
