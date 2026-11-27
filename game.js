@@ -59,7 +59,6 @@ function makeField(theme='flanders'){const m=new Mesh();
 const grass=theme==='picardy'?[.48,.47,.30]:theme==='italy'?[.33,.50,.32]:D.grass;
 const strip=theme==='picardy'?[.63,.52,.36]:theme==='italy'?[.55,.57,.46]:D.strip;
 m.box(0,-.30,0,1700,.55,1700,grass);
-for(const stripInfo of RUNWAYS)runwayMesh(m,stripInfo,strip);
 let seed=42;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)|0;return(seed>>>0)/4294967296};
 for(let i=0;i<260;i++){const x=(rand()-.5)*1550,z=(rand()-.5)*1550;if(Math.abs(x)<24&&Math.abs(z)<320)continue;m.box(x,.004,z,2+rand()*9,.025,3+rand()*9,rand()<.5?grass:theme==='picardy'?[.55,.52,.34]:D.patch)}
 for(const x of [-83,-50,53,88]){m.box(x,5.5,78,27,11,27,theme==='italy'?D.white:D.wood);m.box(x,11.9,78,30,2,30,theme==='picardy'?D.red:D.steel);m.box(x,5.6,64,17,9,.45,D.black)}
@@ -78,6 +77,7 @@ if(theme==='picardy'){
   m.box(x,.008,z,135,.018,116,(i+j)%3===0?[.58,.53,.31]:(i-j)%3===0?[.43,.51,.29]:[.62,.57,.34]);
  }
 }
+for(const stripInfo of RUNWAYS)runwayMesh(m,stripInfo,strip);
 return m}
 let field=makeField();
 function makeAircraft(p){
@@ -146,6 +146,7 @@ function cleanCareer(value){
  return c;
 }
 function loadCareer(){try{return cleanCareer(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'))}catch{return fallbackProgress()}}
+let lastLandingStrip=null;
 let career=loadCareer(),selectedMission=0,missionTime=0,missionScore=0,missionStage=0,missionIndex=0,missionFinished=false,airborne=false,damage=100,fuel=100,trainingShots=0,photoDone=new Set(),formationClock=0,weatherClock=0,fireCooldown=0,smokeTime=0,missionMarks=[],missionRender=[],enemyDefeated=false;
 let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,airfield=career.settings.airfield,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
 const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,color:'#b8c8d0'}],bots=[];
@@ -206,7 +207,7 @@ field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIEL
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
 function setupMission(){
- missionTime=0;missionScore=0;missionStage=0;missionIndex=0;missionFinished=false;airborne=false;photoDone.clear();formationClock=0;enemyDefeated=false;trainingShots=0;damage=100;fuel=100;fireCooldown=0;smokeTime=0;windClock=0;enemyFireClock=0;
+ missionTime=0;missionScore=0;missionStage=0;missionIndex=0;missionFinished=false;airborne=false;lastLandingStrip=null;photoDone.clear();formationClock=0;enemyDefeated=false;trainingShots=0;damage=100;fuel=100;fireCooldown=0;smokeTime=0;windClock=0;enemyFireClock=0;
  $('missionHeading').textContent=missions[selectedMission].name;
  $('missionNumber').textContent=selectedMission+1;
  $('crosshair').hidden=selectedMission!==5;
@@ -217,20 +218,21 @@ function setupMission(){
  updateMissionDisplay();
 }
 function formatTime(seconds){const n=Math.max(0,Math.floor(seconds));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
+function landingTarget(){const strip=nearestRunway(state.x,state.z).strip;return [strip.x,6,strip.z]}
 function currentTarget(){
- if(selectedMission===1||selectedMission===3)return missionIndex>=(selectedMission===3?5:checkpoints.length)?[0,5,-140]:checkpoints[missionIndex];
- if(selectedMission===2)return landmarks[missionIndex]?[landmarks[missionIndex].x,landmarks[missionIndex].y,landmarks[missionIndex].z]:[0,5,-140];
- if(selectedMission===5)return bots.find(b=>!b.friendly&&b.hp>0)?[bots[0].x,bots[0].y,bots[0].z]:[0,5,-140];
+ if(selectedMission===1||selectedMission===3)return missionIndex>=(selectedMission===3?5:checkpoints.length)?landingTarget():checkpoints[missionIndex];
+ if(selectedMission===2)return landmarks[missionIndex]?[landmarks[missionIndex].x,landmarks[missionIndex].y,landmarks[missionIndex].z]:landingTarget();
+ if(selectedMission===5)return bots.find(b=>!b.friendly&&b.hp>0)?[bots[0].x,bots[0].y,bots[0].z]:landingTarget();
  return null;
 }
 function objectiveText(){
  if(missionFinished)return 'Mission complete! Choose another mission from the menu.';
  const m=missions[selectedMission];
- if(selectedMission===0)return missionStage===0?'Take off and climb above 80 metres.':missionStage===1?'Return to the runway and land gently.':'Complete';
- if(selectedMission===1)return missionIndex<checkpoints.length?'Pass ring '+(missionIndex+1)+' of '+checkpoints.length+'.':'Return to base for your landing.';
- if(selectedMission===2)return missionIndex<3?'Fly near '+landmarks[missionIndex].name+' and press PHOTO.':'Return to base and land.';
+ if(selectedMission===0)return missionStage===0?'Take off and climb above 80 metres.':missionStage===1?'Land gently at any marked airstrip.':'Complete';
+ if(selectedMission===1)return missionIndex<checkpoints.length?'Pass ring '+(missionIndex+1)+' of '+checkpoints.length+'.':'Land at any marked airstrip.';
+ if(selectedMission===2)return missionIndex<3?'Fly near '+landmarks[missionIndex].name+' and press PHOTO.':'Land at any marked airstrip.';
  if(selectedMission===3)return missionIndex<5?'Follow wingmen through waypoint '+(missionIndex+1)+' / 5.':'Return to base and land.';
- if(selectedMission===4)return missionStage===0?'Climb above 75 m; your engine will lose power.':'Engine failure: glide to a safe landing.';
+ if(selectedMission===4)return missionStage===0?'Climb above 75 m; your engine will lose power.':'Engine failure: land on any marked strip.';
  if(selectedMission===5)return enemyDefeated?'Return to base and land.':'Get behind the red training aircraft and press FIRE.';
  return m.goal;
 }
@@ -241,6 +243,8 @@ function updateMissionDisplay(){
  $('compass').textContent=String((Math.round(state.yaw*180/Math.PI)%360+360)%360).padStart(3,'0')+'°';
  $('windReadout').textContent=weather==='clear'?'CALM':weather==='breezy'?'BREEZY':'STORM';
  $('formationInfo').textContent=bots.filter(b=>b.friendly).length?'WINGMEN: '+bots.filter(b=>b.friendly).length:'WINGMEN: —';
+ const nearest=nearestRunway(state.x,state.z);
+ $('nearestStrip').textContent='NEAREST: '+nearest.strip.name+' · '+Math.round(nearest.distance)+' m';
  const t=currentTarget();$('radarTargets').innerHTML=t?'<span class="radar-dot target" style="left:'+clamp(50+(t[0]-state.x)*.07,5,94)+'%;top:'+clamp(50-(t[2]-state.z)*.07,5,94)+'%"></span>':'';
 }
 function grant(amount){missionScore+=amount;}
@@ -256,9 +260,11 @@ function finishMission(){
  saveCareer();updateMissionDisplay();
  announce('MISSION COMPLETE · '+finalScore+' pts · '+stars+' medal stars · +'+(m.award+stars*15)+' XP');
 }
-function notifyLanding(safe){
+function notifyLanding(safe,runway=runwayAt(state.x,state.z)){
  if(!active||paused||missionFinished||!airborne)return;
  if(!safe){damage=Math.max(0,damage-45);grant(-60);announce('Hard landing! Mission failed. Restart to try again.');return}
+ if(!runway){airborne=false;announce('Safe grass landing, but no runway credit. Take off and land on a marked strip.');return}
+ lastLandingStrip=runway.id;announce('Touchdown at '+runway.name+'!');
  career.landings++;saveCareer();grant(90);
  if(selectedMission===0&&missionStage===1)finishMission();
  if(selectedMission===1&&missionIndex>=checkpoints.length)finishMission();
@@ -408,7 +414,7 @@ if(grounded){state.roll=mix(state.roll,0,Math.min(1,dt*6));state.pitch=clamp(sta
  state.vs=mix(state.vs,desired,Math.min(1,dt*1.4));state.y+=state.vs*dt;if(weather!=='clear'){state.x+=gust*dt;state.roll=clamp(state.roll+gust*.008*dt,-.91,.91)}
  if(state.y<=.48){state.y=.48;grounded=true;
  if(state.vs< (difficulty==='arcade'?-8:difficulty==='balanced'?-5:-3.8)||Math.abs(state.roll)>(difficulty==='arcade'?.50:.36)||Math.abs(state.pitch)>.33||state.speed>p.stall*(difficulty==='arcade'?2.1:1.85)){crashed=true;state.speed=0;notifyLanding(false);announce('Hard landing! Press R or Start Flight to retry.');$('flightState').textContent='HARD LANDING'}
- else{state.vs=0;state.pitch=0;state.roll=0;state.speed*=.80;notifyLanding(true);if(!missionFinished)announce('Smooth touchdown! Brake to stop or throttle up to take off again.')}
+ else{state.vs=0;state.pitch=0;state.roll=0;state.speed*=.80;notifyLanding(true);if(!missionFinished){const strip=runwayAt(state.x,state.z);announce(strip?'Smooth landing at '+strip.name+'! Brake to stop or take off again.':'Grass landing outside the airstrips: no mission credit.');}}
 }}
 state.x+=Math.sin(state.yaw)*Math.cos(state.pitch)*state.speed*dt;state.z+=Math.cos(state.yaw)*Math.cos(state.pitch)*state.speed*dt;
 propAngle+=dt*(4+state.throttle*55);flightTick(dt);
