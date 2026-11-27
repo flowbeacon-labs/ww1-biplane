@@ -284,7 +284,7 @@ test('Landing coach has five steps with aircraft-specific target speeds and dire
  assert.ok(ground.targetKmh>60&&ground.targetKmh<140);
  assert.equal(ground.step,1);
  game.setAirborne(true);
- Object.assign(game.state,{x:0,z:450,y:40,yaw:0,speed:30,vs:3});
+ Object.assign(game.state,{x:350,z:350,y:40,yaw:0,speed:30,vs:3});
  assert.equal(game.landingLessonSnapshot().step,2);
  game.setSoloStage(1);
  const returnTurn=game.landingLessonSnapshot();
