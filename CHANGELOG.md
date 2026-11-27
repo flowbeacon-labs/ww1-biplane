@@ -1,5 +1,12 @@
 # Changelog
 
+## Flight Launch Repair
+- Fixed a shader-link error introduced with the Day/Evening update: consistent `mediump float` precision for `uDusk` in both GLSL shaders.
+- Added an on-screen startup failure message rather than a silent nonresponsive Start Flight button.
+- Added Chromium/WebGL real-browser launch testing with a screenshot and console-error validation; separated the dependency-free Node smoke suite.
+- Updated the game script cache version so existing iPhone browsers fetch the repaired code.
+
+
 ## Day and Evening Airfield Maps
 - Added Day and Evening time-of-day selection to the Flight Academy settings.
 - Evening includes warm sunset sky and distance haze, changed sunlight direction and intensity, a low sunset sun, and lit runway edges/thresholds on all four airstrips.
