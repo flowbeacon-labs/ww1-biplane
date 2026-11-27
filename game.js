@@ -2,6 +2,7 @@
 const $=id=>document.getElementById(id),cv=$('flight'),gl=cv.getContext('webgl',{antialias:true,alpha:false,powerPreference:'high-performance'});
 cv.addEventListener('webglcontextlost',e=>{e.preventDefault();$('error').hidden=false;$('error').textContent='Graphics context lost. Reload the game to restore the 3D scene.'});
 if(!gl){$('error').hidden=false;$('error').textContent='WebGL unavailable. Try a newer browser with hardware acceleration enabled.';return}
+try {
 const TAU=Math.PI*2,clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),mix=(a,b,t)=>a+(b-a)*t;
 const planes=[
 {name:'Sopwith Camel',country:'United Kingdom',flag:'🇬🇧',year:1917,span:9,body:7,levels:2,color:'#947c56',wing:'#c5b18b',trim:'#eadabe',mark:'round',max:53,stall:19,accel:10,details:'British rotary-engine fighter, with a compact fuselage and two braced wings.'},
@@ -512,4 +513,12 @@ draw(model.mesh,base,view,proj,camEye);draw(model.prop,multiply(base,multiply(mo
 }
 function frame(time){const dt=Math.min(.055,Math.max(0,(time-last)/1000));last=time;step(dt);render();updateAudio();requestAnimationFrame(frame)}
 reset();requestAnimationFrame(frame);
+} catch (error) {
+ console.error('Wings of 1918 startup failed:',error);
+ const overlay=$('error');
+ if(overlay){
+  overlay.hidden=false;
+  overlay.textContent='Flight simulator could not start: '+(error?.message||String(error))+'. Reload this page. If the issue persists, report this error in GitHub.';
+ }
+}
 })();
