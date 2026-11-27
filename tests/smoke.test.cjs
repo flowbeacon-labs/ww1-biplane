@@ -13,7 +13,7 @@ function boot() {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v}};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -262,3 +262,47 @@ test('All airfield maps retain their runway geometry in Evening mode',()=>{
  }
 });
 
+
+test('Mission bar is suppressed during active flight, landing coach shows for first mission',()=>{
+ const {game,element}=boot();
+ game.begin();
+ assert.equal(element('app').classList.contains('flight-active'),true);
+ assert.equal(element('landingCoach').hidden,false);
+ assert.equal(game.landingLessonSnapshot().step,1);
+ assert.match(element('coachInstruction').textContent,/BRAKE/);
+ element('coachToggle').events.click();
+ assert.equal(element('landingCoach').classList.contains('coach-collapsed'),true);
+ element('pauseFlight').events.click();
+ assert.equal(element('app').classList.contains('flight-active'),false);
+ assert.equal(element('landingCoach').hidden,true);
+});
+test('Landing coach has five steps with aircraft-specific target speeds and directional turn advice',()=>{
+ const {game,element}=boot();
+ game.begin();
+ element('brake').events.click();
+ const ground=game.landingLessonSnapshot();
+ assert.ok(ground.targetKmh>60&&ground.targetKmh<140);
+ assert.equal(ground.step,1);
+ game.setAirborne(true);
+ Object.assign(game.state,{x:0,z:450,y:40,yaw:0,speed:30,vs:3});
+ assert.equal(game.landingLessonSnapshot().step,2);
+ game.setSoloStage(1);
+ const returnTurn=game.landingLessonSnapshot();
+ assert.equal(returnTurn.step,3);
+ assert.match(returnTurn.instruction,/LEFT|RIGHT/);
+ Object.assign(game.state,{x:0,z:100,y:45,yaw:Math.PI,speed:30,vs:-2});
+ const align=game.landingLessonSnapshot();
+ assert.equal(align.step,4);
+ assert.match(align.instruction,/descend|down|altitude|slow|line|centerline|wings|around/i);
+ Object.assign(game.state,{x:0,z:20,y:9,yaw:Math.PI,speed:24,vs:-1.5});
+ const flare=game.landingLessonSnapshot();
+ assert.equal(flare.step,5);
+ assert.match(flare.instruction,/level|settle|POWER|nose/i);
+});
+test('Tutorial stays hidden in non-solo missions',()=>{
+ const {game,element}=boot();
+ game.setMission(1);
+ game.begin();
+ assert.equal(element('landingCoach').hidden,true);
+ assert.equal(element('app').classList.contains('flight-active'),true);
+});
