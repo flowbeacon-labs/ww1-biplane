@@ -1,5 +1,9 @@
 # Wings of 1918 — Player Guide
 
+## Day and Evening maps
+
+Choose **Time of day → Day** for bright daylight or **Time of day → Evening** for sunset-colored skies, warm low-angle aircraft and terrain lighting, a visible sun, and runway edge/threshold lights. The choice applies to Flanders, Picardy and Italian Valley, with all four airstrips preserved. Day and Evening can also be combined with Clear, Breezy or Stormy weather. Switching the time does not reset your current mission, and the choice is stored with your pilot career data.
+
 ## Quick start on iPhone
 1. Open https://flowbeacon-labs.github.io/ww1-biplane/ in Safari and turn the phone to landscape where practical.
 2. Select **First Solo Flight**, **Arcade** handling, **Clear** weather, and the **Sopwith Camel**.
