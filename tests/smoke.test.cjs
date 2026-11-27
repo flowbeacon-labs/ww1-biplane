@@ -86,10 +86,10 @@ test('Formation and combat AI aircraft initialize',()=>{
  assert.equal(game.status().bots.filter(b=>!b.friendly).length,1);
 });
 test('Career reset requires confirmation',()=>{
- const {game,element,ctx}=boot();game.finishMission();const xp=game.career.xp;
- element('resetCareer').events.click();assert.equal(game.career.xp,xp);
+ const {game,element,ctx,saved}=boot();game.finishMission();const xp=game.career.xp;
+ element('resetCareer').events.click();assert.equal(JSON.parse(saved.get('flowbeacon-wings-career-v1')).xp,xp);
  ctx.window.confirm=()=>true;element('resetCareer').events.click();
- assert.equal(game.career.xp,xp, 'the original object must not mutate');
+ assert.equal(JSON.parse(saved.get('flowbeacon-wings-career-v1')).xp,0);
 });
 test('Camera view matrices remain finite',()=>{
  const {game,element}=boot();game.render();
