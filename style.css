@@ -25,3 +25,8 @@
 #app[data-weather="breezy"] #weatherOverlay{opacity:.09;background:linear-gradient(120deg,transparent 25%,#ffffff88 48%,transparent 70%)}
 @keyframes flightRain{to{background-position:-44px 160px}}
 @media(prefers-reduced-motion:reduce){#app[data-weather="storm"] #weatherOverlay{animation:none}}
+
+/* Persistent return to aircraft selection, separate from the Arcade navigation. */
+.navigation-actions{display:flex;align-items:center;gap:7px;pointer-events:auto;flex-wrap:wrap}
+.top .plane-back{border:1px solid #f6d69099;border-radius:12px;background:#d9b76c;color:#16243a;padding:10px 12px;font-weight:900;font-size:12px;white-space:nowrap;text-shadow:none}
+@media(max-width:680px){.navigation-actions{gap:4px}.top .plane-back{font-size:10px;padding:8px 7px}.top .home{padding:8px 7px}.brand{letter-spacing:.06em}.brand b{font-size:12px}}
