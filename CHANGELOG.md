@@ -1,5 +1,12 @@
 # Changelog
 
+## Landing School and Clear Flight View
+- Hide the large mission progress bar when a flight is active; pause/menu access remains available.
+- Add an optional collapsible five-step first-solo instructor for takeoff, climb to 80 metres, returning to a runway, heading/speed alignment and gentle touchdown.
+- Dynamically calculate training speed targets from selected aircraft, heading and nearest airstrip. Display speed, altitude and vertical speed during the lesson.
+- Add Node regression checks and Chromium UI assertions for mission bar removal and tutorial behavior.
+
+
 ## Flight Launch Repair
 - Fixed a shader-link error introduced with the Day/Evening update: consistent `mediump float` precision for `uDusk` in both GLSL shaders.
 - Added an on-screen startup failure message rather than a silent nonresponsive Start Flight button.
