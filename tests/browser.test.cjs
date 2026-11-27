@@ -32,6 +32,16 @@ const path=require('node:path');
  }));
  console.log('AFTER START',JSON.stringify(result));console.log(errors.join('\n'));
  await page.screenshot({path:'flight-startup.png'});
+ for(const width of [590,900,1280]){
+  await page.setViewportSize({width,height:800});
+  const layout=await page.evaluate(()=>{
+   const help=document.getElementById('help').getBoundingClientRect();
+   const actions=document.querySelector('.flight-actions').getBoundingClientRect();
+   return {helpBottom:help.bottom,actionsTop:actions.top,helpLeft:help.left,helpRight:help.right,viewport:innerWidth};
+  });
+  if(layout.helpBottom>layout.actionsTop||layout.helpLeft<0||layout.helpRight>layout.viewport)throw Error('Flight controls overlap at '+width+'px: '+JSON.stringify(layout));
+ }
  await browser.close();
  if(!result.menuHidden||result.stageWidth<100||result.stageHeight<100||errors.length)throw Error('Flight launch failed: '+JSON.stringify(result));
 })().catch(e=>{console.error(e.stack);process.exitCode=1});
+
