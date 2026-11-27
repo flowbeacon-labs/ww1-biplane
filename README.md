@@ -34,7 +34,7 @@ Select among three *WWI-inspired*, not geographically exact, settings:
 - Picardy Farm Airfield, with patchwork fields
 - Italian Valley Base, with distant angular mountains
 
-The flight map also contains a village, river and bridge, railroad, station, hangars, farms, trees, and low-poly clouds. Choose Clear, Breezy, or Stormy weather. Wind affects the aircraft, while storms provide darker skies and an optional visual rain effect.
+The flight map also contains a village, river and bridge, railroad, station, hangars, farms, trees, and low-poly clouds. The checkpoint ring course stays at least 95 metres laterally clear of the runway centerline. Choose Clear, Breezy, or Stormy weather. Wind affects the aircraft, while storms provide darker skies and an optional visual rain effect.
 
 ## Controls
 
@@ -50,6 +50,8 @@ The flight map also contains a village, river and bridge, railroad, station, han
 | Photo during reconnaissance | P | PHOTO |
 | Pause / missions | Esc / M | PAUSE / MISSIONS |
 | Restart | R | Start Flight after pause/menu |
+
+**Clear view:** Detailed instrument statistics and radar are hidden by default to avoid covering the sky, especially on iPhone. Tap **STATS** in the flight header to reveal them and **HIDE STATS** to collapse them.
 
 **Takeoff:** Release BRAKE, build speed with throttle, then pull up gently.  
 **Landing:** Align with the runway, lower power gradually, level the wings and settle at low vertical speed.
