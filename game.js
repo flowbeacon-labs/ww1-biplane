@@ -276,38 +276,46 @@ const fsource='precision mediump float;varying vec3 vCol;varying float fog;void 
 const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vsource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fsource));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
 const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k));
 function draw(mesh,mat,view,proj,eye){mesh.upload();for(const [loc,m] of [[uniforms[0],mat],[uniforms[1],view],[uniforms[2],proj]])gl.uniformMatrix4fv(loc,false,new Float32Array(m));gl.uniform3fv(uniforms[3],new Float32Array(eye));mesh.buf.forEach((b,i)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(attributes[i]);gl.vertexAttribPointer(attributes[i],3,gl.FLOAT,false,0,0)});gl.drawArrays(gl.TRIANGLES,0,mesh.count)}
-function choose(i){selected=i;model=makeAircraft(planes[i]);const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
+function choose(i){selected=i;model=makeAircraft(planes[i]);setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
 $('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+'</small></button>').join('');
 document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>choose(+b.dataset.index)));choose(0);
 function announce(t){$('notice').textContent=t}
-function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});snapCamera();grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
+function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});setupMission();snapCamera();grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
 let last=performance.now();
-function begin(){reset();active=true;paused=false;$('menu').hidden=true;last=performance.now()}
+function begin(){reset();career.flights++;saveCareer();active=true;paused=false;$('menu').hidden=true;$('start').textContent='RESUME FLIGHT →';last=performance.now()}
 $('start').addEventListener('click',()=>{if(active&&paused&&!crashed){paused=false;$('menu').hidden=true;last=performance.now()}else begin()});
 function pause(){if(!active)return;paused=!paused;$('menu').hidden=!paused;$('start').textContent=paused?'RESUME FLIGHT →':'START FLIGHT →'}
 $('camera').addEventListener('click',()=>{camera=(camera+1)%3;snapCamera();$('camName').textContent=['CHASE','CLOSE','COCKPIT'][camera]});
 const keyMap={KeyW:'w',KeyS:'s',KeyA:'a',KeyD:'d',KeyQ:'q',KeyE:'e',ArrowUp:'up',ArrowDown:'down'};
-document.addEventListener('keydown',e=>{let k=keyMap[e.code];if(k){keys.add(k);e.preventDefault()}if(e.repeat)return;if(e.code==='Space'){brake=!brake;$('brake').classList.toggle('on',brake);e.preventDefault()}if(e.code==='KeyC')$('camera').click();if(e.code==='KeyR'){begin()}if(e.code==='Escape')pause()});
+document.addEventListener('keydown',e=>{let k=keyMap[e.code];if(k){keys.add(k);e.preventDefault()}if(e.repeat)return;if(e.code==='Space'){brake=!brake;$('brake').classList.toggle('on',brake);e.preventDefault()}if(e.code==='KeyC')$('camera').click();if(e.code==='KeyR'){begin()}if(e.code==='Escape')pause();if(e.code==='KeyF')shoot();if(e.code==='KeyP')takePhoto();if(e.code==='KeyM')pause()});
 document.addEventListener('keyup',e=>{let k=keyMap[e.code];if(k){keys.delete(k);e.preventDefault()}});
 window.addEventListener('blur',()=>{keys.clear();touch.clear();if(active&&!paused)pause()});
 document.querySelectorAll('[data-control]').forEach(el=>{const k=el.dataset.control;el.addEventListener('pointerdown',e=>{touch.add(k);el.setPointerCapture(e.pointerId);e.preventDefault()});for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,()=>touch.delete(k))});
 for(const [id,k] of [['throttleUp','up'],['throttleDown','down']]){const el=$(id);el.addEventListener('pointerdown',e=>{touch.add(k);el.setPointerCapture(e.pointerId);e.preventDefault()});for(const event of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(event,()=>touch.delete(k))}
 $('brake').addEventListener('click',()=>{brake=!brake;$('brake').classList.toggle('on',brake)});
 const held=k=>keys.has(k)||touch.has(k),axis=(a,b)=>(held(a)?1:0)-(held(b)?1:0);
-function step(dt){if(!active||paused||crashed)return;const p=planes[selected],w=axis('w','s'),a=axis('d','a'),r=axis('e','q');state.throttle=clamp(state.throttle+axis('up','down')*dt*.29,0,1);
-const drag=.0016*state.speed*state.speed+(grounded?1:.55);state.speed=clamp(state.speed+(p.accel*state.throttle-drag-(brake&&grounded?17:0))*dt,0,p.max*1.23);
-if(grounded){state.roll=mix(state.roll,0,Math.min(1,dt*6));state.pitch=clamp(state.pitch+(w*.47-state.pitch*.4)*dt,0,.22);state.yaw+=r*dt*(.22+state.speed*.008);state.y=.48;state.vs=0;if(state.speed>p.stall*1.28&&state.pitch>.065){grounded=false;state.vs=1.1;announce('Airborne! Hold a gentle climb and keep your airspeed up.')}}else{
- state.pitch=clamp(state.pitch+(w*.40-state.pitch*.12)*dt,-.60,.60);state.roll=clamp(state.roll+(a*.82-state.roll*.20)*dt,-.91,.91);
+function step(dt){if(!active||paused||crashed)return;const p=planes[selected],joyInput=joystickInput(),w=clamp(axis('w','s')+joyInput.y,-1,1),a=clamp(axis('d','a')+joyInput.x,-1,1),r=axis('e','q');state.throttle=clamp(state.throttle+axis('up','down')*dt*.29,0,1);
+if(selectedMission===4&&missionStage===1)state.throttle=Math.min(state.throttle,.20);
+ const wind=weather==='clear'?0:weather==='breezy'?1.5:4.0;
+ const gust=wind*Math.sin(windClock*.65)*.25;
+ const controlFactor=difficulty==='arcade'?1.17:difficulty==='balanced'?1:.82;
+ const fuelFactor=fuel>0?1:0;
+ const damageFactor=.55+.45*damage/100;
+ const drag=.0016*state.speed*state.speed+(grounded?1:.55);
+ state.speed=clamp(state.speed+(p.accel*state.throttle*fuelFactor*damageFactor-drag-(brake&&grounded?17:0)+gust*.08)*dt,0,p.max*1.23);
+if(grounded){state.roll=mix(state.roll,0,Math.min(1,dt*6));state.pitch=clamp(state.pitch+(w*.47*controlFactor-state.pitch*.4)*dt,0,.22);state.yaw+=r*dt*(.22+state.speed*.008);state.y=.48;state.vs=0;if(state.speed>p.stall*1.28&&state.pitch>.065){grounded=false;state.vs=1.1;announce('Airborne! Hold a gentle climb and keep your airspeed up.')}}else{
+ state.pitch=clamp(state.pitch+(w*.40*controlFactor-state.pitch*(difficulty==='arcade'?.3:.12))*dt,-.60,.60);
+ state.roll=clamp(state.roll+(a*.82*controlFactor-state.roll*(difficulty==='arcade'?.46:.20))*dt,-.91,.91);
  state.yaw+=(r*.28+Math.sin(state.roll)*(.16+state.speed*.006))*dt;
- const stall=state.speed<p.stall?-(p.stall-state.speed)*1.9:0;
+ const effectiveStall=p.stall*(difficulty==='arcade'?.80:difficulty==='balanced'?1:1.12);const stall=state.speed<effectiveStall?-(effectiveStall-state.speed)*(difficulty==='arcade'?.9:1.9):0;
  const desired=Math.sin(state.pitch)*state.speed*.83+stall;
- state.vs=mix(state.vs,desired,Math.min(1,dt*1.4));state.y+=state.vs*dt;
+ state.vs=mix(state.vs,desired,Math.min(1,dt*1.4));state.y+=state.vs*dt;if(weather!=='clear'){state.x+=gust*dt;state.roll=clamp(state.roll+gust*.008*dt,-.91,.91)}
  if(state.y<=.48){state.y=.48;grounded=true;
- if(state.vs< -5||Math.abs(state.roll)>.36||Math.abs(state.pitch)>.33||state.speed>p.stall*1.85){crashed=true;state.speed=0;announce('Hard landing! Press R or Start Flight to retry.');$('flightState').textContent='HARD LANDING'}
- else{state.vs=0;state.pitch=0;state.roll=0;state.speed*=.80;announce('Smooth touchdown! Brake to stop or throttle up to take off again.')}
+ if(state.vs< (difficulty==='arcade'?-8:difficulty==='balanced'?-5:-3.8)||Math.abs(state.roll)>(difficulty==='arcade'?.50:.36)||Math.abs(state.pitch)>.33||state.speed>p.stall*(difficulty==='arcade'?2.1:1.85)){crashed=true;state.speed=0;notifyLanding(false);announce('Hard landing! Press R or Start Flight to retry.');$('flightState').textContent='HARD LANDING'}
+ else{state.vs=0;state.pitch=0;state.roll=0;state.speed*=.80;notifyLanding(true);if(!missionFinished)announce('Smooth touchdown! Brake to stop or throttle up to take off again.')}
 }}
 state.x+=Math.sin(state.yaw)*Math.cos(state.pitch)*state.speed*dt;state.z+=Math.cos(state.yaw)*Math.cos(state.pitch)*state.speed*dt;
-propAngle+=dt*(4+state.throttle*55);
+propAngle+=dt*(4+state.throttle*55);flightTick(dt);
 $('speed').textContent=Math.round(state.speed*3.6);$('alt').textContent=Math.round(Math.max(0,state.y-.48));$('vs').textContent=state.vs.toFixed(1);$('power').textContent=Math.round(state.throttle*100);$('powerBar').style.width=Math.round(state.throttle*100)+'%';
 if(!crashed){$('flightState').textContent=grounded?(brake?'BRAKES ON':state.speed>3?'TAKEOFF ROLL':'ON RUNWAY'):(state.speed<p.stall?'STALL WARNING':state.vs>1?'CLIMBING':state.vs< -1?'DESCENDING':'LEVEL FLIGHT');if(!grounded&&state.speed<p.stall)announce('STALL WARNING! Lower the nose and increase power.');else if(grounded&&brake&&state.throttle>.4)announce('Release the brake before takeoff.')}
 }
@@ -315,7 +323,7 @@ if(!crashed){$('flightState').textContent=grounded?(brake?'BRAKES ON':state.spee
 let camEye=[0,5.7,-153],camTarget=[0,2.0,-138],cameraSnap=true;
 function snapCamera(){cameraSnap=true;}
 function render(){const dpi=Math.min(window.devicePixelRatio||1,1.6),w=Math.max(1,Math.round(cv.clientWidth*dpi)),h=Math.max(1,Math.round(cv.clientHeight*dpi));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;gl.viewport(0,0,w,h)}
-gl.clearColor(.61,.77,.87,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+if(weather==='storm')gl.clearColor(.42,.52,.60,1);else if(weather==='breezy')gl.clearColor(.57,.72,.79,1);else gl.clearColor(.61,.77,.87,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 const f=[Math.sin(state.yaw)*Math.cos(state.pitch),Math.sin(state.pitch),Math.cos(state.yaw)*Math.cos(state.pitch)],pos=[state.x,state.y,state.z];let eye,target;
 if(camera===2){
  eye=add(pos,add(f.map(n=>n*1.0),[0,1.48,0]));
@@ -332,9 +340,26 @@ if(cameraSnap){camEye=eye.slice();camTarget=target.slice();cameraSnap=false}
 else{const factor=1-Math.exp(-6/60);camEye=camEye.map((v,i)=>mix(v,eye[i],factor));camTarget=camTarget.map((v,i)=>mix(v,target[i],factor))}
 const view=viewMatrix(camEye,camTarget),proj=projection((camera===2?73:camera===1?62:61)*Math.PI/180,w/h,.15,2300);
 draw(field,identity(),view,proj,camEye);
+ draw(worldObjects,identity(),view,proj,camEye);
+ if(active&&!missionFinished&&(selectedMission===1||selectedMission===3)){
+  const indexLimit=selectedMission===3?5:checkpoints.length;
+  for(let i=missionIndex;i<Math.min(indexLimit,missionIndex+3);i++){
+   const point=checkpoints[i];
+   draw(markerMeshes.ring,move(point[0],point[1],point[2]),view,proj,camEye);
+  }
+ }
+ if(active&&selectedMission===2&&!missionFinished&&missionIndex<3){
+  const point=landmarks[missionIndex];draw(markerMeshes.ring,move(point.x,point.y,point.z),view,proj,camEye);
+ }
+ if(active)for(const bot of bots){
+  if(bot.hp<=0)continue;
+  const shape=bot.friendly?aiShape:enemyShape,botMat=multiply(move(bot.x,bot.y,bot.z),yaw(bot.phase*.24));
+  draw(shape.mesh,botMat,view,proj,camEye);
+  draw(shape.prop,multiply(botMat,move(...shape.offset)),view,proj,camEye);
+ }
 const orientation=multiply(yaw(state.yaw),multiply(pitch(-state.pitch),roll(-state.roll))),base=multiply(move(...pos),orientation);
 draw(model.mesh,base,view,proj,camEye);draw(model.prop,multiply(base,multiply(move(...model.offset),roll(propAngle))),view,proj,camEye)
 }
-function frame(time){const dt=Math.min(.055,Math.max(0,(time-last)/1000));last=time;step(dt);render();requestAnimationFrame(frame)}
+function frame(time){const dt=Math.min(.055,Math.max(0,(time-last)/1000));last=time;step(dt);render();updateAudio();requestAnimationFrame(frame)}
 reset();requestAnimationFrame(frame);
 })();
