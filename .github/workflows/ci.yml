@@ -18,3 +18,23 @@ jobs:
         run: node --check game.js
       - name: Run browser-mock regression tests
         run: npm test
+
+  browser-launch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser harness
+        run: npm install --no-save playwright@1.58.2
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test real WebGL startup
+        run: node tests/browser.test.cjs
+      - name: Upload startup screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: startup-screen
+          path: flight-startup.png
