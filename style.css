@@ -60,3 +60,25 @@
 .runway-guide{margin-top:5px;align-self:flex-start;background:#13354aca;color:#ffe4a1;font-size:11px;font-weight:800;line-height:1.2;padding:6px 9px;border:1px solid #fff2b344;border-radius:8px;max-width:min(410px,90%);white-space:normal}
 @media(max-width:680px){.runway-guide{font-size:9px;padding:4px 7px;margin-top:3px;max-width:80%}}
 
+
+/* Minimal mission UI: the old mission panel is not shown once flying begins.
+   PAUSE (or Esc) continues to give access to mission selection. */
+#app.flight-active .mission-hud{display:none!important}
+.landing-coach{position:absolute;left:clamp(12px,2vw,27px);bottom:150px;z-index:2;width:min(355px,calc(100% - 24px));padding:11px 13px;border-radius:13px;background:#0c2435dc;border:1px solid #f1d59a7d;color:#f3f7fc;box-shadow:0 7px 18px #06172435;pointer-events:auto;text-shadow:0 1px 3px #0016}
+.landing-coach[hidden]{display:none!important}
+.coach-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
+.coach-header span{font-size:10px;letter-spacing:.12em;font-weight:900;color:#f5d787}
+.coach-header button{border:1px solid #d0d9e281;border-radius:7px;padding:4px 7px;background:#24445bcc;color:#fff;font-size:10px;font-weight:700;pointer-events:auto}
+.landing-coach strong{font-size:14px;display:block}
+.landing-coach p{font-size:12px;line-height:1.45;margin:5px 0;color:#edf3fa}
+.coach-readout{font-size:11px;line-height:1.4;color:#f8d998;font-variant-numeric:tabular-nums}
+.landing-coach.coach-collapsed{width:auto;max-width:calc(100% - 24px)}
+.landing-coach.coach-collapsed strong,.landing-coach.coach-collapsed p,.landing-coach.coach-collapsed .coach-readout{display:none}
+@media(max-width:700px){
+ .landing-coach{left:8px;top:60px;bottom:auto;width:min(250px,calc(100% - 105px));padding:8px 9px}
+ .landing-coach strong{font-size:12px}
+ .landing-coach p{font-size:11px;line-height:1.3}
+ .coach-readout{font-size:10px}
+ .coach-header span{font-size:9px;letter-spacing:.03em}
+ .coach-header button{font-size:9px;padding:3px 5px}
+}
