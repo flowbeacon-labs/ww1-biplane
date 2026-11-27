@@ -107,3 +107,18 @@ test('Original aircraft body remains in chase camera field of view',()=>{
  assert.ok(mat.every(Number.isFinite));
  assert.ok(Math.hypot(camEye[0]-game.state.x,camEye[2]-game.state.z)<20);
 });
+
+
+test('Back to Planes pauses flight and aircraft change starts a fresh flight',()=>{
+ const {game,element}=boot();
+ game.begin();
+ assert.equal(element('menu').hidden,true);
+ element('backToPlanes').events.click();
+ assert.equal(element('menu').hidden,false);
+ assert.equal(element('start').textContent,'START NEW FLIGHT →');
+ assert.equal(element('notice').textContent,'Select your aircraft, then choose Start New Flight.');
+ element('start').events.click();
+ assert.equal(element('menu').hidden,true);
+ assert.equal(game.state.speed,0);
+ assert.equal(game.state.y,0.48);
+});
