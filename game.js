@@ -13,7 +13,7 @@ const planes=[
 ];
 const hex=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)/255);
 const D={grass:[.27,.43,.27],patch:[.32,.49,.31],strip:[.55,.54,.43],white:[.94,.92,.81],wood:[.49,.35,.23],steel:[.41,.43,.42],black:[.09,.09,.10],gold:[.84,.73,.40],red:[.8,.22,.16],blue:[.18,.31,.68],green:[.25,.54,.28]};
-const dim=(c,f)=>c.map(v=>v*f),v=(x,y,z)=>[x,y,z],sub=(a,b)=>a.map((n,i)=>n-b[i]),add=(a,b)=>a.map((n,i)=>n+b[i]),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2]],dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0),unit=a=>{const l=Math.hypot(...a)||1;return a.map(x=>x/l)};
+const dim=(c,f)=>c.map(v=>v*f),v=(x,y,z)=>[x,y,z],sub=(a,b)=>a.map((n,i)=>n-b[i]),add=(a,b)=>a.map((n,i)=>n+b[i]),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0),unit=a=>{const l=Math.hypot(...a)||1;return a.map(x=>x/l)};
 class Mesh{constructor(){this.pos=[];this.nrm=[];this.col=[];this.buf=null}
  tri(a,b,c,col){let n=unit(cross(sub(b,a),sub(c,a)));for(const p of [a,b,c]){this.pos.push(...p);this.nrm.push(...n);this.col.push(...col)}}
  quad(a,b,c,d,col){this.tri(a,b,c,col);this.tri(a,c,d,col)}
