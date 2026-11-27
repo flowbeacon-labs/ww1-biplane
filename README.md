@@ -101,6 +101,12 @@ Then open http://localhost:8000 in a browser supporting WebGL. For phone access 
 
 Enable GitHub Pages using **Settings → Pages → Deploy from a branch → main → /(root)**. The arcade links to this repository's published site.
 
+## Launch reliability and actual browser validation
+
+The Day/Evening lighting update originally introduced an incompatible WebGL shader-link precision declaration for the shared `uDusk` uniform. The vertex and fragment shaders now explicitly use matching `mediump float` precision. Game initialization errors are shown directly on the page instead of silently leaving Start Flight unresponsive.
+
+Automated checks include real Chromium browser startup in addition to Node/WebGL mocks: the browser harness clicks Start Flight, verifies the menu closes and the canvas is sized, and captures console errors and a screenshot. The browser job runs on Ubuntu 24.04 and has its own Playwright install step.
+
 ## Testing status and limitations
 
 The syntax and mocked-browser regression suite are run by GitHub Actions. The suite covers aircraft availability, initialization, WebGL rendering calls, takeoff, mission progress, career persistence, career reset confirmation, AI and camera matrices.
