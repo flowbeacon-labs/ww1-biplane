@@ -332,6 +332,17 @@ let last=performance.now();
 function begin(){reset();missionPending=false;planePending=false;career.flights++;saveCareer();active=true;paused=false;$('menu').hidden=true;$('start').textContent='RESUME FLIGHT →';last=performance.now()}
 $('start').addEventListener('click',()=>{if(active&&paused&&!crashed&&!missionPending&&!planePending){paused=false;$('menu').hidden=true;last=performance.now()}else begin()});
 function pause(){if(!active)return;paused=!paused;$('menu').hidden=!paused;$('start').textContent=paused?'RESUME FLIGHT →':'START FLIGHT →'}
+function returnToPlaneSelection(){
+ // Preserve earned career progress, but require a new start when switching aircraft.
+ keys.clear();touch.clear();joystick.x=0;joystick.y=0;
+ $('joyKnob').style.transform='translate(0,0)';
+ paused=true;planePending=true;
+ $('menu').hidden=false;
+ $('start').textContent='START NEW FLIGHT →';
+ $('notice').textContent='Select your aircraft, then choose Start New Flight.';
+ if(typeof document.getElementById==='function')$('planes').scrollIntoView?.({behavior:'smooth',block:'center'});
+}
+$('backToPlanes').addEventListener('click',returnToPlaneSelection);
 $('camera').addEventListener('click',()=>{camera=(camera+1)%3;snapCamera();$('camName').textContent=['CHASE','CLOSE','COCKPIT'][camera]});
 const keyMap={KeyW:'w',KeyS:'s',KeyA:'a',KeyD:'d',KeyQ:'q',KeyE:'e',ArrowUp:'up',ArrowDown:'down'};
 document.addEventListener('keydown',e=>{let k=keyMap[e.code];if(k){keys.add(k);e.preventDefault()}if(e.repeat)return;if(e.code==='Space'){brake=!brake;$('brake').classList.toggle('on',brake);e.preventDefault()}if(e.code==='KeyC')$('camera').click();if(e.code==='KeyR'){begin()}if(e.code==='Escape')pause();if(e.code==='KeyF')shoot();if(e.code==='KeyP')takePhoto();if(e.code==='KeyM')pause()});
