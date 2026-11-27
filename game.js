@@ -281,6 +281,62 @@ function objectiveText(){
  if(selectedMission===5)return enemyDefeated?'Return to base and land.':'Get behind the red training aircraft and press FIRE.';
  return m.goal;
 }
+// Calculated from each aircraft's simplified stall speed; these are GAME targets,
+// not real-world aircraft operating speeds.
+function landingLessonSnapshot(){
+ const aircraft=planes[selected],speedKmh=Math.round(state.speed*3.6),altitude=Math.max(0,state.y-.48);
+ const targetKmh=Math.round(aircraft.stall*1.45*3.6),takeoffKmh=Math.round(aircraft.stall*1.3*3.6);
+ const nearest=nearestRunway(state.x,state.z),strip=nearest.strip;
+ const distance=Math.round(Math.hypot(state.x-strip.x,state.z-strip.z));
+ const bearing=Math.atan2(strip.x-state.x,strip.z-state.z);
+ const delta=Math.atan2(Math.sin(bearing-state.yaw),Math.cos(bearing-state.yaw));
+ const turn=delta>.20?'RIGHT (D / joystick right)':delta<-.20?'LEFT (A / joystick left)':'straight';
+ const direction=strip.axis==='z'?(state.z>=strip.z?180:0):(state.x>=strip.x?270:90);
+ const heading=(Math.round((state.yaw*180/Math.PI)%360)+360)%360;
+ const headingError=Math.abs(Math.atan2(Math.sin(state.yaw-direction*Math.PI/180),Math.cos(state.yaw-direction*Math.PI/180)));
+ const readout='Speed '+speedKmh+' km/h · Alt '+Math.round(altitude)+' m · Heading '+String(heading).padStart(3,'0')+'° · Sink '+state.vs.toFixed(1)+' m/s';
+ let step=1,title='',instruction='';
+ if(missionFinished){step=5;title='Lesson completed';instruction='You landed safely. Open PAUSE to choose another mission.';}
+ else if(grounded&&!airborne){
+  step=1;title='Take off from the runway';
+  instruction=brake?'Release BRAKE, then hold + POWER.':'Hold + POWER. At about '+takeoffKmh+' km/h, pull the joystick gently up (W).';
+ }else if(missionStage===0){
+  step=2;title='Climb steadily to 80 m';
+  instruction='Aim for '+Math.round(targetKmh*1.25)+'–'+Math.round(targetKmh*1.7)+' km/h. Hold a gentle climb, not a steep pull. Current altitude: '+Math.round(altitude)+' / 80 m.';
+ }else if(distance>190){
+  step=3;title='Turn back toward an airstrip';
+  instruction=turn==='straight'?'Good direction. Fly toward '+strip.name+' ('+distance+' m), and gradually descend toward 50 m.':'Bank '+turn+' in short presses until the airstrip is ahead. Target: '+strip.name+' ('+distance+' m). Keep altitude around 50–80 m.';
+ }else if(altitude>22||distance>75||headingError>.42){
+  step=4;title='Line up and slow down';
+  const directionText=strip.axis==='z'?'north–south':'east–west';
+  if(headingError>.42)instruction='Align with the '+directionText+' strip. Aim for heading '+String(direction).padStart(3,'0')+'°. Use brief gentle turns and level the wings.';
+  else if(speedKmh>targetKmh+16)instruction='Reduce throttle toward 20–35% to slow to roughly '+targetKmh+' km/h. Keep the wings level.';
+  else if(altitude>22)instruction='Good alignment. Ease the nose down (S / joystick down) until around 15–20 m. Keep '+(targetKmh-12)+'–'+(targetKmh+12)+' km/h.';
+  else instruction='Follow the runway centerline. Ease down toward 8–12 m, aiming for about '+targetKmh+' km/h.';
+ }else{
+  step=5;title='Gentle touchdown';
+  if(Math.abs(state.vs)>3.5&&state.vs<0)instruction='Descending too quickly! Raise the nose slightly. Aim for sink rate gentler than 3 m/s.';
+  else if(speedKmh>targetKmh+18)instruction='Too fast. Reduce POWER and keep the aircraft centered over the runway.';
+  else instruction='Keep wings level and nose almost level. Settle gently onto the marked strip; use BRAKE after touchdown.';
+ }
+ return{step,title,instruction,readout,targetKmh,strip:strip.id,distance};
+}
+let coachCollapsed=false;
+function updateLandingCoach(){
+ const visible=active&&!paused&&selectedMission===0&&!crashed;
+ const panel=$('landingCoach');panel.hidden=!visible;
+ if(!visible)return;
+ const lesson=landingLessonSnapshot();
+ $('coachStep').textContent='LANDING SCHOOL · STEP '+lesson.step+'/5';
+ $('coachTitle').textContent=lesson.title;
+ $('coachInstruction').textContent=lesson.instruction;
+ $('coachReadout').textContent=lesson.readout;
+ panel.classList.toggle('coach-collapsed',coachCollapsed);
+ $('coachToggle').textContent=coachCollapsed?'SHOW TIPS':'HIDE TIPS';
+ $('coachToggle').setAttribute('aria-expanded',String(!coachCollapsed));
+}
+$('coachToggle').addEventListener('click',()=>{coachCollapsed=!coachCollapsed;updateLandingCoach()});
+
 function updateMissionDisplay(){
  $('objective').textContent=objectiveText();$('missionTime').textContent=formatTime(missionTime);
  $('missionScore').textContent=Math.round(missionScore)+' pts';
@@ -290,6 +346,7 @@ function updateMissionDisplay(){
  $('formationInfo').textContent=bots.filter(b=>b.friendly).length?'WINGMEN: '+bots.filter(b=>b.friendly).length:'WINGMEN: —';
  const nearest=nearestRunway(state.x,state.z);
  $('nearestStrip').textContent='NEAREST: '+nearest.strip.name+' · '+Math.round(nearest.distance)+' m';
+ updateLandingCoach();
  const t=currentTarget();$('radarTargets').innerHTML=t?'<span class="radar-dot target" style="left:'+clamp(50+(t[0]-state.x)*.07,5,94)+'%;top:'+clamp(50-(t[2]-state.z)*.07,5,94)+'%"></span>':'';
 }
 function grant(amount){missionScore+=amount;}
@@ -411,15 +468,15 @@ document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>ch
 function announce(t){$('notice').textContent=t}
 function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});setupMission();snapCamera();grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
 let last=performance.now();
-function begin(){reset();missionPending=false;planePending=false;career.flights++;saveCareer();active=true;paused=false;$('menu').hidden=true;$('start').textContent='RESUME FLIGHT →';last=performance.now()}
-$('start').addEventListener('click',()=>{if(active&&paused&&!crashed&&!missionPending&&!planePending){paused=false;$('menu').hidden=true;last=performance.now()}else begin()});
-function pause(){if(!active)return;paused=!paused;$('menu').hidden=!paused;$('start').textContent=paused?'RESUME FLIGHT →':'START FLIGHT →'}
+function begin(){reset();missionPending=false;planePending=false;career.flights++;saveCareer();active=true;paused=false;$('menu').hidden=true;$('app').classList.add('flight-active');$('start').textContent='RESUME FLIGHT →';last=performance.now();updateLandingCoach()}
+$('start').addEventListener('click',()=>{if(active&&paused&&!crashed&&!missionPending&&!planePending){paused=false;$('menu').hidden=true;$('app').classList.add('flight-active');updateLandingCoach();last=performance.now()}else begin()});
+function pause(){if(!active)return;paused=!paused;$('menu').hidden=!paused;$('app').classList.toggle('flight-active',!paused);updateLandingCoach();$('start').textContent=paused?'RESUME FLIGHT →':'START FLIGHT →'}
 function returnToPlaneSelection(){
  // Preserve earned career progress, but require a new start when switching aircraft.
  keys.clear();touch.clear();joystick.x=0;joystick.y=0;
  $('joyKnob').style.transform='translate(0,0)';
  paused=true;planePending=true;
- $('menu').hidden=false;
+ $('menu').hidden=false;$('app').classList.remove('flight-active');updateLandingCoach();
  $('start').textContent='START NEW FLIGHT →';
  $('notice').textContent='Select your aircraft, then choose Start New Flight.';
  if(typeof document.getElementById==='function')$('planes').scrollIntoView?.({behavior:'smooth',block:'center'});
