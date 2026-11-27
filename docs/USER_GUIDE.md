@@ -17,6 +17,19 @@
 - **Emergency:** At 75 m the engine is limited. Glide and land carefully.
 - **Dogfight:** Approach the moving red practice aircraft, aim ahead, and press **FIRE**; avoid enemy practice shots and return to base after disabling the opponent.
 
+## Finding another airstrip
+
+There are four usable landing strips, including the original home runway:
+
+| Airstrip | Relative location | Runway direction |
+| --- | --- | --- |
+| Home Airfield | Center of the practice field | North–south |
+| Western Meadow Strip | West/southwest of home | North–south |
+| Eastern Patrol Strip | East/southeast of home | North–south |
+| Northern Farm Strip | North of home | East–west |
+
+Look for pale runway markings, threshold bars, and hangars beside the satellite strips. The always-visible **NEAREST** cue shows the nearest landing field and approximate distance. For mission completion, land within the strip's marked boundaries with a gentle touchdown. Landing outside a runway may be survivable but earns no mission landing credit.
+
 ## Display and controls
 - **Airspeed:** km/h, simulated.
 - **Altitude:** metres above ground.
