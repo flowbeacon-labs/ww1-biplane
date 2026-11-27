@@ -5,6 +5,12 @@ A browser-based World War I aviation adventure built with native WebGL 1.0, HTML
 **Play:** https://flowbeacon-labs.github.io/ww1-biplane/  
 **Arcade:** https://flowbeacon-labs.github.io/flowbeacon-arcade/
 
+## First Solo Flight: Guided Landing School
+
+The bulky mission progress bar is hidden while the aircraft is flying. For **First Solo Flight**, a small optional **Landing School** instructor follows five steps: takeoff, climb to 80 m, return/turn toward a strip, align and slow, then touch down. Use **HIDE TIPS / SHOW TIPS** to collapse or expand the instructor. Mission selection remains available through the PAUSE button or Esc key.
+
+The instructor derives its approximate **takeoff and approach speeds from the selected aircraft's simulated stall speed**, shows current speed, height, heading and vertical speed, and gives directional turn instructions toward the closest marked strip. All suggested speeds are *gameplay values*, not actual aircraft specifications.
+
 ## Gameplay
 
 A fully playable training-to-combat career with six missions:
