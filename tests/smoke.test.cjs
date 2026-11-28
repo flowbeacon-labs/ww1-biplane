@@ -13,7 +13,7 @@ function boot({missingIds=[]}={}) {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,missionLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v},setMissionIndex:(n)=>{missionIndex=n},setEnemyDefeated:(v)=>{enemyDefeated=v},getTraining:()=>trainingInstructions,compassHeading,bearingToCardinal,updateCompass};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,missionLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v},setMissionIndex:(n)=>{missionIndex=n},setEnemyDefeated:(v)=>{enemyDefeated=v},getTraining:()=>trainingInstructions,compassHeading,bearingToCardinal,updateCompass,graphics:()=>({quality:graphicsQuality,terrainVertices:field.pos.length/3,sceneryVertices:worldObjects.pos.length/3,field,worldObjects})};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -408,4 +408,45 @@ test('Virtual joystick hold locks document selection and releases the lock',()=>
  assert.equal(blocked,true);
  area.events.pointerup({pointerId:7});
  assert.equal(root.classList.contains('joystick-held'),false);
+});
+
+test('Low graphics reduces terrain and scenery vertex counts without resetting flight',()=>{
+ const {game,element,saved}=boot();
+ const normal=game.graphics();
+ assert.equal(normal.quality,'normal');
+ game.begin();
+ game.state.y=35;game.state.speed=27;
+ element('graphicsQuality').value='low';
+ element('graphicsQuality').events.change();
+ const low=game.graphics();
+ assert.equal(low.quality,'low');
+ assert.ok(low.terrainVertices<normal.terrainVertices*.75,'Low terrain meshes should be smaller');
+ assert.ok(low.sceneryVertices<normal.sceneryVertices*.75,'Low scenery meshes should be smaller');
+ assert.equal(game.state.y,35);
+ assert.equal(game.state.speed,27);
+ assert.equal(JSON.parse(saved.get('flowbeacon-wings-career-v1')).settings.graphicsQuality,'low');
+ game.render();
+ assert.ok(element('flight').width<1100,'Low mode should lower canvas resolution');
+ element('graphicsQuality').value='normal';element('graphicsQuality').events.change();
+ const recovered=game.graphics();
+ assert.equal(recovered.quality,'normal');
+ assert.equal(recovered.terrainVertices,normal.terrainVertices);
+ assert.equal(recovered.sceneryVertices,normal.sceneryVertices);
+ game.render();
+ assert.equal(element('flight').width,1100);
+});
+test('Graphics setting defaults to Normal and is restored by pilot reset',()=>{
+ const {game,element,ctx,saved}=boot();
+ assert.equal(game.graphics().quality,'normal');
+ element('graphicsQuality').value='low';element('graphicsQuality').events.change();
+ ctx.window.confirm=()=>true;
+ element('resetCareer').events.click();
+ assert.equal(game.graphics().quality,'normal');
+ assert.equal(element('graphicsQuality').value,'normal');
+ assert.equal(JSON.parse(saved.get('flowbeacon-wings-career-v1')).settings.graphicsQuality,'normal');
+});
+test('Missing graphics dropdown in older cached HTML keeps safe Normal default',()=>{
+ const {game}=boot({missingIds:['graphicsQuality']});
+ assert.equal(game.graphics().quality,'normal');
+ game.begin();game.render();
 });
