@@ -113,3 +113,7 @@ From the mission/aircraft selection menu, choose **Graphics quality**:
 - **Low**: fewer decorative trees, clouds and landscape objects, lower internal rendering resolution, fewer display frames, and reduced weather effects. Controls, missions, flight handling, four airstrips, compass and runway lights remain available.
 
 Switch quality at any point from the pause menu; the mission and pilot career progress are preserved. The choice is saved automatically. Use Low if your browser slows down, the game is consuming too much memory, or your device gets warm. You can switch back to Normal without resetting.
+
+## Remembrance memorial and aircraft flag
+
+Look west of the original Home Airfield runway for a small stone **war memorial** and its flagpole. The hoisted flag matches the country of the aircraft you chose (Britain, Germany, France, Italy or the United States). Choose a different plane to update the flag automatically. The memorial remains away from the runway, does not create an obstacle for landing, and appears in both Normal and Low graphics. Flags are stylized modern national identifiers rather than historically precise 1918 flags.
