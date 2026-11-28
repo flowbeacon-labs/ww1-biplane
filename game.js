@@ -24,7 +24,17 @@ class Mesh{constructor(){this.pos=[];this.nrm=[];this.col=[];this.buf=null}
  box(x,y,z,w,h,d,col){const l=x-w/2,r=x+w/2,b=y-h/2,t=y+h/2,n=z-d/2,f=z+d/2;this.quad(v(l,t,n),v(r,t,n),v(r,t,f),v(l,t,f),col);this.quad(v(l,b,f),v(r,b,f),v(r,b,n),v(l,b,n),dim(col,.72));this.quad(v(l,b,n),v(r,b,n),v(r,t,n),v(l,t,n),dim(col,.82));this.quad(v(r,b,f),v(l,b,f),v(l,t,f),v(r,t,f),dim(col,.92));this.quad(v(l,b,f),v(l,b,n),v(l,t,n),v(l,t,f),dim(col,.78));this.quad(v(r,b,n),v(r,b,f),v(r,t,f),v(r,t,n),dim(col,.85))}
  tube(a,b,r,col,segments=7){const axis=unit(sub(b,a)),ref=Math.abs(axis[1])>.9?[1,0,0]:[0,1,0],u=unit(cross(axis,ref)),w=cross(axis,u);for(let i=0;i<segments;i++){const theta=i*TAU/segments,phi=(i+1)*TAU/segments,offset=t=>u.map((n,j)=>n*Math.cos(t)*r+w[j]*Math.sin(t)*r);this.quad(add(a,offset(theta)),add(b,offset(theta)),add(b,offset(phi)),add(a,offset(phi)),col)}}
  disc(x,y,z,r,col){for(let i=0;i<20;i++){let a=i*TAU/20,b=(i+1)*TAU/20;this.tri(v(x,y,z),v(x+Math.cos(a)*r,y,z+Math.sin(a)*r),v(x+Math.cos(b)*r,y,z+Math.sin(b)*r),col)}}
- upload(){if(this.buf)return;this.count=this.pos.length/3;this.buf=[this.pos,this.nrm,this.col].map(data=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);return b})}
+ upload(){
+ if(this.buf)return;
+ this.count=this.pos.length/3;
+ this.buf=[this.pos,this.nrm,this.col].map(data=>{
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);return b;
+ });
+ // WebGL owns a copy after bufferData. Free CPU geometry buffers to avoid
+ // retaining the full scene twice. Meshes are rebuilt after quality changes.
+ this.pos=[];this.nrm=[];this.col=[];
+}
  destroy(){if(this.buf){for(const b of this.buf)gl.deleteBuffer(b);this.buf=null}}
 }
 
