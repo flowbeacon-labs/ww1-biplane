@@ -549,9 +549,33 @@ function updateAudio(){if(!audioContext||!engineOsc||!engineGain)return;const no
 function joystickInput(){return{x:joystick.x,y:joystick.y}}
 const joy=$('joyArea'),knob=$('joyKnob');
 function joystickMove(e){if(joystickPointer!==e.pointerId)return;const r=joy.getBoundingClientRect(),x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2),mag=Math.max(1,Math.hypot(x,y)),scale=Math.min(43,mag)/mag;joystick.x=clamp(x*scale/43,-1,1);joystick.y=clamp(-y*scale/43,-1,1);knob.style.transform='translate('+joystick.x*36+'px,'+(-joystick.y*36)+'px)'}
-joy.addEventListener('pointerdown',e=>{if(joystickPointer!==null)return;if(e.pointerType==='mouse'&&e.button!==0)return;joystickPointer=e.pointerId;joy.setPointerCapture(e.pointerId);joystickMove(e);e.preventDefault()});
+function joystickSelectionLock(locked){
+ document.documentElement.classList.toggle('joystick-held',locked);
+ if(locked&&window.getSelection)window.getSelection()?.removeAllRanges();
+}
+function stopJoystick(e){
+ if(e&&joystickPointer!==e.pointerId)return;
+ joystickPointer=null;joystick.x=0;joystick.y=0;
+ knob.style.transform='translate(0,0)';
+ joystickSelectionLock(false);
+}
+joy.addEventListener('pointerdown',e=>{
+ if(joystickPointer!==null)return;
+ if(e.pointerType==='mouse'&&e.button!==0)return;
+ joystickPointer=e.pointerId;
+ joystickSelectionLock(true);
+ joy.setPointerCapture(e.pointerId);joystickMove(e);e.preventDefault();
+});
 joy.addEventListener('pointermove',joystickMove);
-for(const event of ['pointerup','pointercancel','lostpointercapture'])joy.addEventListener(event,e=>{if(joystickPointer!==e.pointerId)return;joystickPointer=null;joystick.x=0;joystick.y=0;knob.style.transform='translate(0,0)'});
+for(const event of ['pointerup','pointercancel','lostpointercapture'])joy.addEventListener(event,stopJoystick);
+// iOS long-press selection may start on an ancestor rather than the joystick.
+// Suppress native callouts while touching the stick, including long stationary holds.
+for(const event of ['touchstart','touchmove'])joy.addEventListener(event,e=>e.preventDefault(),{passive:false});
+joy.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('selectstart',e=>{
+ if(joystickPointer!==null||(active&&!paused&&e.target?.closest?.('#app'))){e.preventDefault()}
+});
+window.addEventListener('blur',()=>stopJoystick());
 
 const identity=()=>[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
 function multiply(a,b){const m=Array(16).fill(0);for(let col=0;col<4;col++)for(let row=0;row<4;row++)for(let k=0;k<4;k++)m[col*4+row]+=a[k*4+row]*b[col*4+k];return m}
