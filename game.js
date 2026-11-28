@@ -174,7 +174,7 @@ const landmarks=[
  {name:'River Bridge',x:345,z:315,y:47},
  {name:'Railway Station',x:-330,z:-285,y:48}
 ];
-const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic',airfield:'flanders',timeOfDay:'day'},missionsCompleted:0});
+const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic',airfield:'flanders',timeOfDay:'day',trainingInstructions:'on'},missionsCompleted:0});
 function cleanCareer(value){
  const c=fallbackProgress();if(!value||typeof value!=='object')return c;
  for(const k of ['xp','flights','landings','medals'])c[k]=Math.max(0,Math.min(10000000,Number.isFinite(value[k])?Math.floor(value[k]):0));
@@ -182,6 +182,7 @@ function cleanCareer(value){
  if(value.settings&&typeof value.settings==='object'){
   if(DIFFICULTIES.includes(value.settings.difficulty))c.settings.difficulty=value.settings.difficulty;
   if(WEATHERS.includes(value.settings.weather))c.settings.weather=value.settings.weather;
+  if(['on','off'].includes(value.settings.trainingInstructions))c.settings.trainingInstructions=value.settings.trainingInstructions;
   if(['day','evening'].includes(value.settings.timeOfDay))c.settings.timeOfDay=value.settings.timeOfDay;
   if(['classic','sky','ace'].includes(value.settings.livery))c.settings.livery=value.settings.livery;
   if(Object.prototype.hasOwnProperty.call(AIRFIELDS,value.settings.airfield))c.settings.airfield=value.settings.airfield;
@@ -192,7 +193,7 @@ function cleanCareer(value){
 function loadCareer(){try{return cleanCareer(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'))}catch{return fallbackProgress()}}
 let lastLandingStrip=null;
 let career=loadCareer(),selectedMission=0,missionTime=0,missionScore=0,missionStage=0,missionIndex=0,missionFinished=false,airborne=false,damage=100,fuel=100,trainingShots=0,photoDone=new Set(),formationClock=0,weatherClock=0,fireCooldown=0,smokeTime=0,missionMarks=[],missionRender=[],enemyDefeated=false;
-let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,airfield=career.settings.airfield,timeOfDay=career.settings.timeOfDay,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
+let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,airfield=career.settings.airfield,timeOfDay=career.settings.timeOfDay,trainingInstructions=career.settings.trainingInstructions,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
 const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,color:'#b8c8d0'}],bots=[];
 const aiShape=makeAircraft(planes[3]),enemyShape=makeAircraft(planes[1]);
 const markerMeshes=(()=>{const ring=new Mesh(),gold=D.gold;for(let i=0;i<40;i++){const a=i*TAU/40,b=(i+1)*TAU/40;ring.tube([Math.cos(a)*10,Math.sin(a)*10,0],[Math.cos(b)*10,Math.sin(b)*10,0],.58,i%2?D.white:gold,5)}
@@ -220,7 +221,7 @@ const worldObjects=(()=>{const m=new Mesh();const r=()=>Math.random();
  }
  return m;
 })();
-function saveCareer(){career.settings={difficulty,weather,livery:paintScheme,airfield,timeOfDay};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
+function saveCareer(){career.settings={difficulty,weather,livery:paintScheme,airfield,timeOfDay,trainingInstructions};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
 function rankTitle(){return career.xp>=2500?'ACE PILOT':career.xp>=1250?'SQUADRON LEADER':career.xp>=600?'FLYING OFFICER':career.xp>=200?'TRAINEE PILOT':'FLIGHT CADET'}
 function refreshCareer(){
  $('pilotRank').textContent=rankTitle();$('pilotXp').textContent=career.xp+' XP';
@@ -240,19 +241,20 @@ function setLivery(){
 function syncSettings(){
  difficulty=$('difficulty').value;weather=$('weather').value;paintScheme=$('livery').value;
  timeOfDay=$('timeOfDay').value==='evening'?'evening':'day';
+ trainingInstructions=$('trainingInstructions').value==='off'?'off':'on';
  $('app').dataset.weather=weather;
  const newAirfield=AIRFIELDS[$('airfield').value]?$('airfield').value:'flanders';
  if(newAirfield!==airfield){field.destroy();airfield=newAirfield;field=makeField(airfield)}
  $('airfieldLabel').textContent=AIRFIELDS[airfield];
  if((paintScheme==='sky'&&career.xp<100)||(paintScheme==='ace'&&career.xp<400)){paintScheme='classic';$('livery').value='classic';announce('Earn XP to unlock that paint scheme.')}
- setLivery();saveCareer();
+ setLivery();saveCareer();updateLandingCoach();
 }
-for(const id of ['difficulty','weather','livery','airfield','timeOfDay']){$(id).value=career.settings[id];$(id).addEventListener('change',syncSettings)}
+for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions']){$(id).value=career.settings[id];$(id).addEventListener('change',syncSettings)}
 field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
 function setupMission(){
- missionTime=0;missionScore=0;missionStage=0;missionIndex=0;missionFinished=false;airborne=false;lastLandingStrip=null;photoDone.clear();formationClock=0;enemyDefeated=false;trainingShots=0;damage=100;fuel=100;fireCooldown=0;smokeTime=0;windClock=0;enemyFireClock=0;
+ missionTime=0;missionScore=0;missionStage=0;missionIndex=0;coachCollapsed=false;missionFinished=false;airborne=false;lastLandingStrip=null;photoDone.clear();formationClock=0;enemyDefeated=false;trainingShots=0;damage=100;fuel=100;fireCooldown=0;smokeTime=0;windClock=0;enemyFireClock=0;
  $('missionHeading').textContent=missions[selectedMission].name;
  $('missionNumber').textContent=selectedMission+1;
  $('crosshair').hidden=selectedMission!==5;
@@ -322,12 +324,90 @@ function landingLessonSnapshot(){
  return{step,title,instruction,readout,targetKmh,strip:strip.id,distance};
 }
 let coachCollapsed=false;
+function trainingReadout(){
+ const spd=Math.round(state.speed*3.6),height=Math.max(0,Math.round(state.y-.48));
+ return 'Speed '+spd+' km/h · Alt '+height+' m · Throttle '+Math.round(state.throttle*100)+'%';
+}
+function trainingNavigation(target){
+ const dx=target[0]-state.x,dz=target[2]-state.z,dist=Math.round(Math.hypot(dx,dz));
+ const bearing=Math.atan2(dx,dz);
+ const delta=Math.atan2(Math.sin(bearing-state.yaw),Math.cos(bearing-state.yaw));
+ const turn=delta>.17?'Turn RIGHT using D / joystick right.':delta<-.17?'Turn LEFT using A / joystick left.':'Keep this heading and fly straight.';
+ return {dist,turn,alt:Math.round(Math.abs(target[1]-state.y)),turnError:Math.abs(delta)};
+}
+function genericTakeoff(missionName){
+ const p=planes[selected],takeoff=Math.round(p.stall*1.3*3.6);
+ return {step:1,title:missionName+': Take off',instruction:brake?'Release BRAKE, then hold + POWER.':'Increase throttle. At about '+takeoff+' km/h, gently pull back (W / joystick up) to climb.',readout:trainingReadout()};
+}
+function returnLandingLesson(missionName){
+ const p=planes[selected],approach=Math.round(p.stall*1.45*3.6),near=nearestRunway(state.x,state.z),strip=near.strip;
+ const nav=trainingNavigation([strip.x,12,strip.z]),height=state.y-.48,spd=Math.round(state.speed*3.6);
+ const angle=(Math.round((state.yaw*180/Math.PI)%360)+360)%360;
+ const direction=strip.axis==='z'?(state.z>=strip.z?180:0):(state.x>=strip.x?270:90);
+ const alignment=Math.abs(Math.atan2(Math.sin(state.yaw-direction*Math.PI/180),Math.cos(state.yaw-direction*Math.PI/180)));
+ const readout=trainingReadout()+' · Runway '+strip.name;
+ if(near.distance>190){
+  return{step:4,title:missionName+': Return to an airstrip',instruction:nav.turn+' Target '+strip.name+', approximately '+nav.dist+' m away. Start a gentle descent toward 40–60 m.',readout};
+ }
+ if(alignment>.35){
+  return{step:4,title:'Align with the runway',instruction:'Approach along the runway, not sideways. Aim heading '+String(direction).padStart(3,'0')+'° (now '+String(angle).padStart(3,'0')+'°). Make short turns, then level your wings.',readout};
+ }
+ if(height>18||spd>approach+18){
+  return{step:4,title:'Slow down and descend',instruction:'Aim for about '+approach+' km/h. If too fast, reduce POWER toward 20–35%. Descend toward 10–18 m, keeping the runway centered.',readout};
+ }
+ return{step:5,title:'Final approach: Touch down',instruction:'Maintain about '+approach+' km/h, wings level, a nearly level nose and a descent slower than 3 m/s. Settle on the marked runway, then apply BRAKE.',readout};
+}
+function missionLessonSnapshot(){
+ if(selectedMission===0)return landingLessonSnapshot();
+ const mission=missions[selectedMission],name=mission.name,p=planes[selected];
+ const safeSpeed=Math.round(p.stall*1.5*3.6);
+ const base=trainingReadout();
+ if(missionFinished)return {step:5,title:'Mission complete',instruction:'Great flying. Press PAUSE to select another mission or aircraft.',readout:base};
+ if(grounded&&!airborne)return genericTakeoff(name);
+ if(selectedMission===1){
+  if(missionIndex>=checkpoints.length)return returnLandingLesson('Sky Rings');
+  const point=checkpoints[missionIndex],nav=trainingNavigation(point),current=missionIndex+1;
+  if(missionIndex===0&&state.y<point[1]-30)return{step:2,title:'Climb to the first ring',instruction:'Climb toward '+Math.round(point[1])+' m. Keep around '+safeSpeed+' km/h or faster, and avoid steep climbs.',readout:base+' · Ring '+current+'/10'};
+  return{step:missionIndex<3?2:3,title:'Fly through ring '+current+' of 10',instruction:nav.turn+' Ring '+nav.dist+' m away, target altitude '+point[1]+' m (difference '+nav.alt+' m). Fly through its CENTER, then follow the next ring.',readout:base+' · Rings '+missionIndex+'/10'};
+ }
+ if(selectedMission===2){
+  if(missionIndex>=landmarks.length)return returnLandingLesson('Recon Patrol');
+  const place=landmarks[missionIndex],nav=trainingNavigation([place.x,place.y,place.z]);
+  return{step:missionIndex===0?2:3,title:'Photograph '+place.name+' ('+(missionIndex+1)+'/3)',instruction:nav.turn+' Fly within 145 m of '+place.name+' (now '+Math.round(Math.hypot(state.x-place.x,state.y-place.y,state.z-place.z))+' m away). Hold a steady height near '+place.y+' m and press PHOTO (P).',readout:base+' · Photos '+missionIndex+'/3'};
+ }
+ if(selectedMission===3){
+  if(missionIndex>=5)return returnLandingLesson('Formation');
+  const wp=checkpoints[missionIndex],nav=trainingNavigation(wp);
+  const friendly=bots.filter(b=>b.friendly);
+  const close=friendly.length?Math.round(Math.min(...friendly.map(b=>Math.hypot(state.x-b.x,state.y-b.y,state.z-b.z)))):0;
+  const ready=formationClock>=3;
+  return{step:missionIndex<2?2:3,title:'Follow wingmen · checkpoint '+(missionIndex+1)+'/5',instruction:nav.turn+' Stay within 110 m of a friendly plane (nearest '+close+' m) to build 3 seconds of formation time ('+formationClock.toFixed(1)+'/3 s). '+(ready?'Now pass near the waypoint.':'Stay close before crossing the waypoint.')+' Waypoint '+nav.dist+' m away.',readout:base};
+ }
+ if(selectedMission===4){
+  if(missionStage===0)return{step:2,title:'Climb to 75 m before engine failure',instruction:'Gain altitude slowly, using enough throttle to stay above about '+safeSpeed+' km/h. At 75 m the engine will lose most power. Start planning a return to the nearest runway.',readout:base};
+  const landing=returnLandingLesson('Engine Emergency');
+  landing.instruction='ENGINE POWER LIMITED TO 20%. '+landing.instruction+' Keep the nose gently down to maintain flying speed; avoid steep turns.';
+  return landing;
+ }
+ if(selectedMission===5){
+  if(enemyDefeated)return returnLandingLesson('Dogfight');
+  const enemy=bots.find(b=>!b.friendly&&b.hp>0);
+  if(!enemy)return{step:3,title:'Opponent disabled',instruction:'Return to a marked runway and land gently.',readout:base};
+  const nav=trainingNavigation([enemy.x,enemy.y,enemy.z]),dist=Math.round(Math.hypot(enemy.x-state.x,enemy.y-state.y,enemy.z-state.z));
+  if(dist>210)return{step:2,title:'Intercept the training opponent',instruction:nav.turn+' Climb toward '+Math.round(enemy.y)+' m and approach within 200 m. Keep roughly '+safeSpeed+' km/h or faster. Opponent '+dist+' m away.',readout:base+' · Hull '+Math.round(damage)+'%'};
+  const bearing=Math.atan2(enemy.x-state.x,enemy.z-state.z);
+  const angle=Math.atan2(Math.sin(bearing-state.yaw),Math.cos(bearing-state.yaw));
+  const elevation=Math.atan2(enemy.y-state.y,Math.hypot(enemy.x-state.x,enemy.z-state.z));
+  return{step:3,title:'Aim and fire on the opponent',instruction:Math.abs(angle)>.20?nav.turn+' Bring the opponent to the center of your view.':Math.abs(elevation-state.pitch)>.20?'Adjust pitch gently (W/S) until the opponent is centered vertically.':'Target centered and in range! Press FIRE (F) repeatedly. Stay within 235 m and watch HULL health.',readout:base+' · Enemy HP '+Math.max(0,Math.round(enemy.hp))+'% · Hull '+Math.round(damage)+'%'};
+ }
+ return{step:2,title:name,instruction:objectiveText(),readout:base};
+}
 function updateLandingCoach(){
- const visible=active&&!paused&&selectedMission===0&&!crashed;
+ const visible=active&&!paused&&trainingInstructions==='on'&&!crashed;
  const panel=$('landingCoach');panel.hidden=!visible;
  if(!visible)return;
- const lesson=landingLessonSnapshot();
- $('coachStep').textContent='LANDING SCHOOL · STEP '+lesson.step+'/5';
+ const lesson=missionLessonSnapshot();
+ $('coachStep').textContent=missions[selectedMission].name.toUpperCase()+' · STEP '+lesson.step+'/5';
  $('coachTitle').textContent=lesson.title;
  $('coachInstruction').textContent=lesson.instruction;
  $('coachReadout').textContent=lesson.readout;
@@ -431,11 +511,11 @@ $('importSave').addEventListener('click',()=>$('importFile').click());
 $('resetCareer').addEventListener('click',()=>{
  if(!window.confirm('Delete saved ranks, XP, medals and mission records on this device? This cannot be undone without an exported backup.'))return;
  career=fallbackProgress();difficulty='arcade';weather='clear';paintScheme='classic';
- for(const id of ['difficulty','weather','livery','airfield','timeOfDay'])$(id).value=career.settings[id];timeOfDay='day';airfield='flanders';field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
+ for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions'])$(id).value=career.settings[id];trainingInstructions='on';coachCollapsed=false;timeOfDay='day';airfield='flanders';field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
  saveCareer();selectedMission=0;missionPending=true;choose(0);
  announce('Pilot career reset. Export a backup before resetting next time.');
 });
-$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay'])$(id).value=career.settings[id];airfield=career.settings.airfield;field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
+$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions'])$(id).value=career.settings[id];trainingInstructions=career.settings.trainingInstructions;coachCollapsed=false;airfield=career.settings.airfield;field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
 function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
