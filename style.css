@@ -118,3 +118,17 @@
  .navigation-actions .icon-control{min-width:39px;min-height:42px}
  .navigation-actions .control-hint{font-size:8px}
 }
+
+/* Always-visible four-point compass: the arrow indicates current heading.
+   Unlike the expanded telemetry it remains visible during flight. */
+.heading-compass{position:absolute;right:clamp(12px,2vw,27px);top:77px;z-index:2;display:flex;align-items:center;flex-direction:column;gap:1px;padding:7px 9px;background:#0a2539d9;border:1px solid #e5d29888;border-radius:12px;min-width:82px;pointer-events:none;text-shadow:0 1px 3px #000b}
+.compass-rose{position:relative;width:65px;height:65px;border:2px solid #ddcc9b;border-radius:50%;background:#182d40bf}
+.compass-rose .cardinal{position:absolute;font-size:12px;font-weight:950;line-height:1;color:#f3e6ba}
+.compass-rose .north{top:2px;left:50%;transform:translateX(-50%);color:#ff927c}
+.compass-rose .east{right:3px;top:50%;transform:translateY(-50%)}
+.compass-rose .south{bottom:2px;left:50%;transform:translateX(-50%)}
+.compass-rose .west{left:3px;top:50%;transform:translateY(-50%)}
+.compass-needle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ff9a72;font-size:24px;transform:rotate(0deg);transition:transform .1s linear;text-shadow:0 1px 2px #000}
+.heading-compass strong{font-size:11px;color:#fff4c5;letter-spacing:.025em}
+.heading-compass #compassDegrees{font-size:10px;color:#e4d4b9;font-variant-numeric:tabular-nums}
+@media(max-width:680px){.heading-compass{top:59px;right:6px;padding:4px 5px;min-width:64px}.compass-rose{width:52px;height:52px}.compass-rose .cardinal{font-size:10px}.compass-needle{font-size:20px}.heading-compass strong{font-size:9px}.heading-compass #compassDegrees{font-size:9px}}
