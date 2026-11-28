@@ -1,5 +1,12 @@
 # Changelog
 
+## Aircraft-country flag at the war memorial
+- Add a small remembrance garden and flagpole west of Home Airfield, outside runway and ring-flight corridors.
+- Hoist the selected aircraft country's stylized flag; replace and dispose the old flag GPU mesh on aircraft changes.
+- Support all five represented countries and both graphics quality settings with no gameplay or collision changes.
+- Add tests for country coverage and off-runway placement.
+
+
 ## Low/Normal graphics and memory optimization
 - Added saved, default-Normal graphics quality dropdown.
 - Low mode reduces world geometry, framebuffer resolution and draw frequency; expensive decorative weather overlays are omitted.
