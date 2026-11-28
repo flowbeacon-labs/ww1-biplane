@@ -97,3 +97,10 @@ The game is inspired by WWI aviation but is not a historical archive or flight t
 - **Plane / chart icons:** return to aircraft selection or open detailed flight statistics.
 
 Holding the touch controls should not open Safari's text-selection or link context menu. Native menus, inputs and navigation remain interactive.
+
+
+## Touchscreen laptops and desktop joystick
+
+The circular virtual flight stick is always available in the bottom-left corner while flying, on **Windows touchscreen laptops, desktop computers with a mouse, tablets and phones**. Drag its knob **up or down to pitch** and **left or right to bank**. Release your finger or mouse button to center it. The same game still supports **W/S pitch** and **A/D bank** from the keyboard, with no separate input mode or setup required.
+
+On desktop, the throttle +/- and brake icons are also available along the bottom edge; click or press and hold as appropriate. The joystick and action controls are laid out to avoid covering the main flight view. The direction compass at the upper right names **NORTH, EAST, SOUTH and WEST** (and intermediate directions).
