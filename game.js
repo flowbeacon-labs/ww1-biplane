@@ -302,6 +302,7 @@ function landingLessonSnapshot(){
  const bearing=Math.atan2(strip.x-state.x,strip.z-state.z);
  const delta=Math.atan2(Math.sin(bearing-state.yaw),Math.cos(bearing-state.yaw));
  const turn=delta>.20?'RIGHT (D / joystick right)':delta<-.20?'LEFT (A / joystick left)':'straight';
+ const targetDirection=bearingToCardinal(strip.x-state.x,strip.z-state.z);
  const direction=strip.axis==='z'?(state.z>=strip.z?180:0):(state.x>=strip.x?270:90);
  const heading=(Math.round((state.yaw*180/Math.PI)%360)+360)%360;
  const headingError=Math.abs(Math.atan2(Math.sin(state.yaw-direction*Math.PI/180),Math.cos(state.yaw-direction*Math.PI/180)));
@@ -316,11 +317,11 @@ function landingLessonSnapshot(){
   instruction='Aim for '+Math.round(targetKmh*1.25)+'–'+Math.round(targetKmh*1.7)+' km/h. Hold a gentle climb, not a steep pull. Current altitude: '+Math.round(altitude)+' / 80 m.';
  }else if(distance>190){
   step=3;title='Turn back toward an airstrip';
-  instruction=turn==='straight'?'Good direction. Fly toward '+strip.name+' ('+distance+' m), and gradually descend toward 50 m.':'Bank '+turn+' in short presses until the airstrip is ahead. Target: '+strip.name+' ('+distance+' m). Keep altitude around 50–80 m.';
+  instruction=turn==='straight'?'Good direction. Head '+targetDirection+' toward '+strip.name+' ('+distance+' m), and gradually descend toward 50 m.':'Head '+targetDirection+'. Bank '+turn+' in short presses until the airstrip is ahead. Target: '+strip.name+' ('+distance+' m). Keep altitude around 50–80 m.';
  }else if(altitude>22||distance>75||headingError>.42){
   step=4;title='Line up and slow down';
   const directionText=strip.axis==='z'?'north–south':'east–west';
-  if(headingError>.42)instruction='Align with the '+directionText+' strip. Aim for heading '+String(direction).padStart(3,'0')+'°. Use brief gentle turns and level the wings.';
+  if(headingError>.42)instruction='Align with the '+directionText+' strip. Aim '+compassHeading(direction*Math.PI/180).cardinal+' ('+String(direction).padStart(3,'0')+'°). Use brief gentle turns and level the wings.';
   else if(speedKmh>targetKmh+16)instruction='Reduce throttle toward 20–35% to slow to roughly '+targetKmh+' km/h. Keep the wings level.';
   else if(altitude>22)instruction='Good alignment. Ease the nose down (S / joystick down) until around 15–20 m. Keep '+(targetKmh-12)+'–'+(targetKmh+12)+' km/h.';
   else instruction='Follow the runway centerline. Ease down toward 8–12 m, aiming for about '+targetKmh+' km/h.';
@@ -337,11 +338,26 @@ function trainingReadout(){
  const spd=Math.round(state.speed*3.6),height=Math.max(0,Math.round(state.y-.48));
  return 'Speed '+spd+' km/h · Alt '+height+' m · Throttle '+Math.round(state.throttle*100)+'%';
 }
+// 0° points north (+Z); 90° points east (+X). 8-point labels help new pilots.
+function compassHeading(radians){
+ const degrees=((Math.round(radians*180/Math.PI)%360)+360)%360;
+ const names=['NORTH','NORTHEAST','EAST','SOUTHEAST','SOUTH','SOUTHWEST','WEST','NORTHWEST'];
+ return {degrees,cardinal:names[Math.round(degrees/45)%8]};
+}
+function bearingToCardinal(dx,dz){return compassHeading(Math.atan2(dx,dz)).cardinal}
+function updateCompass(){
+ const heading=compassHeading(state.yaw),needle=$('compassNeedle');
+ if(needle)needle.style.transform='rotate('+heading.degrees+'deg)';
+ const name=$('directionalHeading');if(name)name.textContent=heading.cardinal;
+ const degrees=$('compassDegrees');if(degrees)degrees.textContent=String(heading.degrees).padStart(3,'0')+'°';
+ const box=$('headingCompass');if(box)box.setAttribute('aria-label','Flying '+heading.cardinal+' at '+heading.degrees+' degrees');
+}
 function trainingNavigation(target){
  const dx=target[0]-state.x,dz=target[2]-state.z,dist=Math.round(Math.hypot(dx,dz));
  const bearing=Math.atan2(dx,dz);
  const delta=Math.atan2(Math.sin(bearing-state.yaw),Math.cos(bearing-state.yaw));
- const turn=delta>.17?'Turn RIGHT using D / joystick right.':delta<-.17?'Turn LEFT using A / joystick left.':'Keep this heading and fly straight.';
+ const cardinal=bearingToCardinal(dx,dz);
+ const turn=delta>.17?'Head '+cardinal+': turn RIGHT using D / joystick right.':delta<-.17?'Head '+cardinal+': turn LEFT using A / joystick left.':'Head '+cardinal+': keep this heading and fly straight.';
  return {dist,turn,alt:Math.round(Math.abs(target[1]-state.y)),turnError:Math.abs(delta)};
 }
 function genericTakeoff(missionName){
@@ -359,7 +375,7 @@ function returnLandingLesson(missionName){
   return{step:4,title:missionName+': Return to an airstrip',instruction:nav.turn+' Target '+strip.name+', approximately '+nav.dist+' m away. Start a gentle descent toward 40–60 m.',readout};
  }
  if(alignment>.35){
-  return{step:4,title:'Align with the runway',instruction:'Approach along the runway, not sideways. Aim heading '+String(direction).padStart(3,'0')+'° (now '+String(angle).padStart(3,'0')+'°). Make short turns, then level your wings.',readout};
+  return{step:4,title:'Align with the runway',instruction:'Approach along the runway, not sideways. Head '+compassHeading(direction*Math.PI/180).cardinal+' ('+String(direction).padStart(3,'0')+'°), currently '+String(angle).padStart(3,'0')+'°. Make short turns, then level your wings.',readout};
  }
  if(height>18||spd>approach+18){
   return{step:4,title:'Slow down and descend',instruction:'Aim for about '+approach+' km/h. If too fast, reduce POWER toward 20–35%. Descend toward 10–18 m, keeping the runway centered.',readout};
@@ -430,7 +446,7 @@ function updateMissionDisplay(){
  $('objective').textContent=objectiveText();$('missionTime').textContent=formatTime(missionTime);
  $('missionScore').textContent=Math.round(missionScore)+' pts';
  $('fuel').textContent=Math.max(0,Math.round(fuel))+'%';$('health').textContent=Math.round(damage)+'%';
- $('compass').textContent=String((Math.round(state.yaw*180/Math.PI)%360+360)%360).padStart(3,'0')+'°';
+ const heading=compassHeading(state.yaw);$('compass').textContent=heading.cardinal+' '+String(heading.degrees).padStart(3,'0')+'°';updateCompass();
  $('windReadout').textContent=weather==='clear'?'CALM':weather==='breezy'?'BREEZY':'STORM';
  $('formationInfo').textContent=bots.filter(b=>b.friendly).length?'WINGMEN: '+bots.filter(b=>b.friendly).length:'WINGMEN: —';
  const nearest=nearestRunway(state.x,state.z);
