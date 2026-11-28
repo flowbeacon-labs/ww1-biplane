@@ -104,3 +104,12 @@ Holding the touch controls should not open Safari's text-selection or link conte
 The circular virtual flight stick is always available in the bottom-left corner while flying, on **Windows touchscreen laptops, desktop computers with a mouse, tablets and phones**. Drag its knob **up or down to pitch** and **left or right to bank**. Release your finger or mouse button to center it. The same game still supports **W/S pitch** and **A/D bank** from the keyboard, with no separate input mode or setup required.
 
 On desktop, the throttle +/- and brake icons are also available along the bottom edge; click or press and hold as appropriate. The joystick and action controls are laid out to avoid covering the main flight view. The direction compass at the upper right names **NORTH, EAST, SOUTH and WEST** (and intermediate directions).
+
+## Low and Normal graphics settings
+
+From the mission/aircraft selection menu, choose **Graphics quality**:
+
+- **Normal** (default): full scenery detail and sharper rendering, appropriate for a laptop with adequate memory.
+- **Low**: fewer decorative trees, clouds and landscape objects, lower internal rendering resolution, fewer display frames, and reduced weather effects. Controls, missions, flight handling, four airstrips, compass and runway lights remain available.
+
+Switch quality at any point from the pause menu; the mission and pilot career progress are preserved. The choice is saved automatically. Use Low if your browser slows down, the game is consuming too much memory, or your device gets warm. You can switch back to Normal without resetting.
