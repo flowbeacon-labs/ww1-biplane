@@ -39,7 +39,7 @@ function boot({missingIds=[]}={}) {
   const canvas=element('flight');canvas.getContext=()=>gl;canvas.clientWidth=1100;canvas.clientHeight=720;
   const saved=new Map(),events={};
   const ctx={
-    document:{getElementById:id=>missingIds.includes(id)?null:element(id),querySelectorAll:()=>[],addEventListener:(type,fn)=>{events[type]=fn;},body:{appendChild(){}}},
+    document:{documentElement:element('htmlRoot'),getElementById:id=>missingIds.includes(id)?null:element(id),querySelectorAll:()=>[],addEventListener:(type,fn)=>{events[type]=fn;},body:{appendChild(){}}},
     window:{devicePixelRatio:1,addEventListener(){},confirm:()=>false},
     localStorage:{getItem:key=>saved.get(key)||null,setItem:(key,value)=>saved.set(key,value)},
     performance:{now:()=>0},requestAnimationFrame(){},setTimeout(){},
@@ -395,4 +395,17 @@ test('Mission navigation instructions use named cardinal directions',()=>{
  Object.assign(game.state,{x:0,y:90,z:0,yaw:0,speed:28});
  const lesson=game.missionLessonSnapshot();
  assert.match(lesson.instruction,/NORTH|SOUTH|EAST|WEST/);
+});
+
+test('Virtual joystick hold locks document selection and releases the lock',()=>{
+ const {element,events}=boot();
+ const area=element('joyArea'),root=element('htmlRoot');
+ const start={pointerId:7,pointerType:'touch',clientX:60,clientY:62,button:0,preventDefault(){}};
+ area.events.pointerdown(start);
+ assert.equal(root.classList.contains('joystick-held'),true);
+ let blocked=false;
+ events.selectstart({target:{closest:()=>null},preventDefault(){blocked=true;}});
+ assert.equal(blocked,true);
+ area.events.pointerup({pointerId:7});
+ assert.equal(root.classList.contains('joystick-held'),false);
 });
