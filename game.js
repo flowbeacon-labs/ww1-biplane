@@ -705,7 +705,7 @@ const view=viewMatrix(camEye,camTarget),proj=projection((camera===2?73:camera===
 if(dusk&&graphicsQuality!=='low')draw(sunsetSun,identity(),view,proj,camEye,true);
  draw(field,identity(),view,proj,camEye);
  draw(worldObjects,identity(),view,proj,camEye);
- if(dusk&&graphicsQuality!=='low')draw(sunsetScenery,identity(),view,proj,camEye,true);
+ if(dusk)draw(sunsetScenery,identity(),view,proj,camEye,true);
  if(active&&!missionFinished&&(selectedMission===1||selectedMission===3)){
   const indexLimit=selectedMission===3?5:checkpoints.length;
   for(let i=missionIndex;i<Math.min(indexLimit,missionIndex+3);i++){
