@@ -84,3 +84,16 @@ Completing missions earns XP and medal stars. Flight rank upgrades and local bes
 
 ## Limitations
 The game is inspired by WWI aviation but is not a historical archive or flight training product. Flight handling, speeds, combat damage and terrain are approximations. No multiplayer, full 3D cockpit instrumentation, real ballistics, or backend storage is included.
+
+## iPhone flight control icons
+
+- **Plus / minus:** hold to increase or reduce throttle. Release your finger to stop adjusting power.
+- **Circled P:** toggle wheel brake before takeoff and after landing.
+- **Camera:** change chase, close, or cockpit view.
+- **Pause bars:** pause and open mission selection.
+- **Speaker:** toggle engine audio.
+- **Target:** fire in the practice dogfight mission.
+- **Camera picture:** take a reconnaissance photograph.
+- **Plane / chart icons:** return to aircraft selection or open detailed flight statistics.
+
+Holding the touch controls should not open Safari's text-selection or link context menu. Native menus, inputs and navigation remain interactive.
