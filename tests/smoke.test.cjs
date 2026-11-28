@@ -13,7 +13,7 @@ function boot() {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v}};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,missionLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v},setMissionIndex:(n)=>{missionIndex=n},setEnemyDefeated:(v)=>{enemyDefeated=v},getTraining:()=>trainingInstructions};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -326,5 +326,48 @@ test('Flight touch and joystick controls prevent the long-press context menu',()
   assert.equal(typeof control.events.contextmenu,'function');
   control.events.contextmenu({preventDefault(){stopped=true;}});
   assert.equal(stopped,true,id+' context menu not suppressed');
+ }
+});
+
+test('Training instructions are enabled by default, off persists and on is restored',()=>{
+ const {game,element,saved}=boot();
+ assert.equal(game.getTraining(),'on');
+ game.begin();assert.equal(element('landingCoach').hidden,false);
+ element('trainingInstructions').value='off';element('trainingInstructions').events.change();
+ assert.equal(game.getTraining(),'off');assert.equal(element('landingCoach').hidden,true);
+ assert.equal(JSON.parse(saved.get('flowbeacon-wings-career-v1')).settings.trainingInstructions,'off');
+ element('trainingInstructions').value='on';element('trainingInstructions').events.change();
+ assert.equal(game.getTraining(),'on');assert.equal(element('landingCoach').hidden,false);
+});
+test('Every mission provides context-specific instructor steps',()=>{
+ const {game,element}=boot();
+ for(let n=0;n<6;n++){
+  game.setMission(n);game.begin();
+  assert.equal(element('landingCoach').hidden,false,'mission '+n+' tutor hidden');
+  game.setAirborne(true);Object.assign(game.state,{y:100,x:20,z:-50,speed:30});
+  if(n===0)game.setSoloStage(1);
+  const lesson=game.missionLessonSnapshot();
+  assert.ok(lesson.step>=2&&lesson.step<=5,'mission '+n+' step');
+  assert.ok(lesson.instruction.length>40,'mission '+n+' instruction too short');
+  assert.ok(lesson.title.length>4,'mission '+n+' missing title');
+  if(n===1)assert.match(lesson.instruction,/ring|Ring/);
+  if(n===2)assert.match(lesson.instruction,/PHOTO/);
+  if(n===3)assert.match(lesson.instruction,/wingmen|friendly/);
+  if(n===4)assert.match(lesson.instruction,/engine|POWER|Climb|Gain/i);
+  if(n===5)assert.match(lesson.instruction,/opponent|FIRE/i);
+ }
+});
+test('Mission completion transitions to runway guidance for every mission',()=>{
+ const {game}=boot();
+ for(let mission of [1,2,3,4,5]){
+  game.setMission(mission);game.begin();game.setAirborne(true);
+  Object.assign(game.state,{x:350,y:65,z:350,speed:30});
+  if(mission===1)game.setMissionIndex(10);
+  if(mission===2)game.setMissionIndex(3);
+  if(mission===3)game.setMissionIndex(5);
+  if(mission===4)game.setSoloStage(1);
+  if(mission===5)game.setEnemyDefeated(true);
+  const guide=game.missionLessonSnapshot();
+  assert.match(guide.instruction,/runway|airstrip|strip|POWER|landing|approach|turn|Turn/i,'mission '+mission);
  }
 });
