@@ -1,5 +1,14 @@
 # Changelog
 
+## Low/Normal graphics and memory optimization
+- Added saved, default-Normal graphics quality dropdown.
+- Low mode reduces world geometry, framebuffer resolution and draw frequency; expensive decorative weather overlays are omitted.
+- Flight physics, missions, runway layouts and evening runway lights remain functional in Low mode.
+- Switch quality in the pause menu without resetting flight; old GPU buffers are disposed and scene objects regenerated.
+- Release CPU-side vertex arrays after WebGL upload to avoid retaining duplicate terrain geometry.
+- Added regression checks for geometry counts, canvas resolution, saved mode and switching modes in a real browser.
+
+
 ## Landing School and Clear Flight View
 - Hide the large mission progress bar when a flight is active; pause/menu access remains available.
 - Add an optional collapsible five-step first-solo instructor for takeoff, climb to 80 metres, returning to a runway, heading/speed alignment and gentle touchdown.
