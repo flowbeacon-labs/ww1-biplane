@@ -143,7 +143,7 @@
 @media(min-width:701px){
  #touch{padding-bottom:6px;gap:20px}
  #joyArea{flex:0 0 116px}
- .help{bottom:152px;right:16px}
+ .help{bottom:235px;right:16px}
  .flight-actions{bottom:157px}
  .notice{max-width:min(590px,70%)}
 }
