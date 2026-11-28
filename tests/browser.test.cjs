@@ -58,6 +58,27 @@ const path=require('node:path');
  });
  if(!calloutSuppressed)throw Error('Throttle long-press context menu is not blocked');
 
+
+ // Training mode is a saved UI preference; the game should switch without a reload.
+ await page.locator('#pauseFlight').click();
+ await page.locator('#trainingInstructions').selectOption('off');
+ await page.locator('#start').click();
+ let training=await page.evaluate(()=>({
+  setting:document.getElementById('trainingInstructions').value,
+  hidden:document.getElementById('landingCoach').hidden,
+  menuHidden:document.getElementById('menu').hidden
+ }));
+ if(training.setting!=='off'||!training.hidden||!training.menuHidden)throw Error('Instructions OFF preference failed: '+JSON.stringify(training));
+ await page.locator('#pauseFlight').click();
+ await page.locator('#trainingInstructions').selectOption('on');
+ await page.locator('#start').click();
+ training=await page.evaluate(()=>({
+  hidden:document.getElementById('landingCoach').hidden,
+  title:document.getElementById('coachTitle').textContent
+ }));
+ if(training.hidden)throw Error('Instructions ON failed: '+JSON.stringify(training));
+ console.log('TRAINING MODE',JSON.stringify(training));
+
  await page.screenshot({path:'flight-startup.png'});
  for(const width of [590,900,1280]){
   await page.setViewportSize({width,height:800});
