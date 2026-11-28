@@ -64,16 +64,17 @@ function runwayMesh(mesh,strip,surface){
  }
 }
 
-function makeField(theme='flanders'){const m=new Mesh();
+function makeField(theme='flanders',quality='normal'){const m=new Mesh();
+const low=quality==='low';
 const grass=theme==='picardy'?[.48,.47,.30]:theme==='italy'?[.33,.50,.32]:D.grass;
 const strip=theme==='picardy'?[.63,.52,.36]:theme==='italy'?[.55,.57,.46]:D.strip;
 m.box(0,-.30,0,1700,.55,1700,grass);
 let seed=42;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)|0;return(seed>>>0)/4294967296};
-for(let i=0;i<260;i++){const x=(rand()-.5)*1550,z=(rand()-.5)*1550;if(Math.abs(x)<24&&Math.abs(z)<320)continue;m.box(x,.004,z,2+rand()*9,.025,3+rand()*9,rand()<.5?grass:theme==='picardy'?[.55,.52,.34]:D.patch)}
-for(const x of [-83,-50,53,88]){m.box(x,5.5,78,27,11,27,theme==='italy'?D.white:D.wood);m.box(x,11.9,78,30,2,30,theme==='picardy'?D.red:D.steel);m.box(x,5.6,64,17,9,.45,D.black)}
-for(let i=0;i<62;i++){let x=(rand()-.5)*1450,z=(rand()-.5)*1450;if(Math.abs(x)<130&&Math.abs(z)<365)continue;let h=6+rand()*10;m.tube(v(x,.1,z),v(x,h*.42,z),.46,D.wood,5);m.tube(v(x,h*.4,z),v(x,h,z),2,rand()<.5?D.grass:D.patch,8)}
+for(let i=0;i<(low?45:260);i++){const x=(rand()-.5)*1550,z=(rand()-.5)*1550;if(Math.abs(x)<24&&Math.abs(z)<320)continue;m.box(x,.004,z,2+rand()*9,.025,3+rand()*9,rand()<.5?grass:theme==='picardy'?[.55,.52,.34]:D.patch)}
+for(const x of (low?[-83,88]:[-83,-50,53,88])){m.box(x,5.5,78,27,11,27,theme==='italy'?D.white:D.wood);m.box(x,11.9,78,30,2,30,theme==='picardy'?D.red:D.steel);m.box(x,5.6,64,17,9,.45,D.black)}
+for(let i=0;i<(low?14:62);i++){let x=(rand()-.5)*1450,z=(rand()-.5)*1450;if(Math.abs(x)<130&&Math.abs(z)<365)continue;let h=6+rand()*10;m.tube(v(x,.1,z),v(x,h*.42,z),.46,D.wood,5);m.tube(v(x,h*.4,z),v(x,h,z),2,rand()<.5?D.grass:D.patch,8)}
 // Additional landing strips and threshold markings are generated above.
-if(theme==='italy'){
+if(theme==='italy'&&!low){
  for(const [x,z,h] of [[-640,380,235],[-410,700,330],[390,680,290],[670,310,200],[-680,-460,250],[650,-580,245]]){
   const a=[x-190,0,z],b=[x+190,0,z],c=[x,h,z+12];
   m.tri(a,b,c,[.39,.47,.43]);m.tri([x-120,0,z+70],[x+120,0,z+70],c,[.49,.55,.50]);
@@ -174,7 +175,7 @@ const landmarks=[
  {name:'River Bridge',x:345,z:315,y:47},
  {name:'Railway Station',x:-330,z:-285,y:48}
 ];
-const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic',airfield:'flanders',timeOfDay:'day',trainingInstructions:'on'},missionsCompleted:0});
+const fallbackProgress=()=>({version:1,xp:0,flights:0,landings:0,medals:0,completed:{},best:{},settings:{difficulty:'arcade',weather:'clear',livery:'classic',airfield:'flanders',timeOfDay:'day',trainingInstructions:'on',graphicsQuality:'normal'},missionsCompleted:0});
 function cleanCareer(value){
  const c=fallbackProgress();if(!value||typeof value!=='object')return c;
  for(const k of ['xp','flights','landings','medals'])c[k]=Math.max(0,Math.min(10000000,Number.isFinite(value[k])?Math.floor(value[k]):0));
@@ -183,6 +184,7 @@ function cleanCareer(value){
   if(DIFFICULTIES.includes(value.settings.difficulty))c.settings.difficulty=value.settings.difficulty;
   if(WEATHERS.includes(value.settings.weather))c.settings.weather=value.settings.weather;
   if(['on','off'].includes(value.settings.trainingInstructions))c.settings.trainingInstructions=value.settings.trainingInstructions;
+  if(['normal','low'].includes(value.settings.graphicsQuality))c.settings.graphicsQuality=value.settings.graphicsQuality;
   if(['day','evening'].includes(value.settings.timeOfDay))c.settings.timeOfDay=value.settings.timeOfDay;
   if(['classic','sky','ace'].includes(value.settings.livery))c.settings.livery=value.settings.livery;
   if(Object.prototype.hasOwnProperty.call(AIRFIELDS,value.settings.airfield))c.settings.airfield=value.settings.airfield;
@@ -193,21 +195,21 @@ function cleanCareer(value){
 function loadCareer(){try{return cleanCareer(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'))}catch{return fallbackProgress()}}
 let lastLandingStrip=null;
 let career=loadCareer(),selectedMission=0,missionTime=0,missionScore=0,missionStage=0,missionIndex=0,missionFinished=false,airborne=false,damage=100,fuel=100,trainingShots=0,photoDone=new Set(),formationClock=0,weatherClock=0,fireCooldown=0,smokeTime=0,missionMarks=[],missionRender=[],enemyDefeated=false;
-let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,airfield=career.settings.airfield,timeOfDay=career.settings.timeOfDay,trainingInstructions=career.settings.trainingInstructions,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
+let difficulty=career.settings.difficulty,weather=career.settings.weather,paintScheme=career.settings.livery,airfield=career.settings.airfield,timeOfDay=career.settings.timeOfDay,trainingInstructions=career.settings.trainingInstructions,graphicsQuality=career.settings.graphicsQuality,windClock=0,joystick={x:0,y:0},joystickPointer=null,enemyFireClock=0,missionPending=false,planePending=false;
 const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,color:'#b8c8d0'}],bots=[];
 const aiShape=makeAircraft(planes[3]),enemyShape=makeAircraft(planes[1]);
 const markerMeshes=(()=>{const ring=new Mesh(),gold=D.gold;for(let i=0;i<40;i++){const a=i*TAU/40,b=(i+1)*TAU/40;ring.tube([Math.cos(a)*10,Math.sin(a)*10,0],[Math.cos(b)*10,Math.sin(b)*10,0],.58,i%2?D.white:gold,5)}
  return {ring,marker:ring}})();
-const worldObjects=(()=>{const m=new Mesh();const r=()=>Math.random();
+function makeWorldObjects(quality='normal'){const m=new Mesh();const low=quality==='low';const r=()=>Math.random();
  // River and a stone bridge, deliberately outside the takeoff strip.
  m.box(355,-.07,150,53,.06,780,[.22,.50,.64]);
  m.box(355,1.2,315,63,2.5,10,D.steel);
  // Railroad with sleepers and a station.
  for(const x of [-342,-330])m.box(x,.16,-260,1,.35,560,D.steel);
- for(let z=-540;z<20;z+=9)m.box(-336,.20,z,25,.20,1.4,D.wood);
+ for(let z=-540;z<20;z+=(low?30:9))m.box(-336,.20,z,25,.20,1.4,D.wood);
  m.box(-382,6,-290,36,12,20,D.wood);m.box(-382,13,-290,39,3,24,D.red);
  // Countryside village blocks.
- for(let i=0;i<17;i++){const x=-390+(i%5)*25,z=250+Math.floor(i/5)*28,hh=6+(i%3)*3;m.box(x,hh/2,z,14,hh,14,i%3===0?D.wood:D.white);m.box(x,hh+1,z,17,2.5,17,i%2?D.red:D.steel)}
+ for(let i=0;i<(low?5:17);i++){const x=-390+(i%5)*25,z=250+Math.floor(i/5)*28,hh=6+(i%3)*3;m.box(x,hh/2,z,14,hh,14,i%3===0?D.wood:D.white);m.box(x,hh+1,z,17,2.5,17,i%2?D.red:D.steel)}
  // Village church and water tower make the route recognizable.
  m.box(-330,20,370,9,40,9,D.white);m.box(-330,42,370,13,5,13,D.red);
  m.tube([480,0,-330],[480,38,-330],3,D.steel);m.box(480,42,-330,18,9,18,D.wood);
@@ -215,13 +217,14 @@ const worldObjects=(()=>{const m=new Mesh();const r=()=>Math.random();
  m.box(-250,.02,400,12,.04,360,D.strip);m.box(250,.02,-320,10,.04,260,D.strip);
  for(const [x,z] of [[-230,480],[230,-385],[450,-30],[-480,-80]]){m.box(x,5,z,24,10,20,D.wood);m.box(x,11,z,28,2,24,D.red)}
  // Layered clouds create visible sky landmarks at different altitudes.
- for(const [x,y,z] of [[-150,170,120],[140,190,310],[-370,200,-200],[390,170,-140],[-70,230,510],[470,235,405],[-510,210,420]]){
+ for(const [x,y,z] of (low?[]:[[-150,170,120],[140,190,310],[-370,200,-200],[390,170,-140],[-70,230,510],[470,235,405],[-510,210,420]])){
   const cloud=[.89,.92,.95];m.box(x,y,z,50,11,25,cloud);
   m.box(x-19,y+5,z,33,13,27,cloud);m.box(x+13,y+7,z,30,17,28,D.white);
  }
  return m;
-})();
-function saveCareer(){career.settings={difficulty,weather,livery:paintScheme,airfield,timeOfDay,trainingInstructions};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
+}
+let worldObjects=makeWorldObjects(graphicsQuality);
+function saveCareer(){career.settings={difficulty,weather,livery:paintScheme,airfield,timeOfDay,trainingInstructions,graphicsQuality};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
 function rankTitle(){return career.xp>=2500?'ACE PILOT':career.xp>=1250?'SQUADRON LEADER':career.xp>=600?'FLYING OFFICER':career.xp>=200?'TRAINEE PILOT':'FLIGHT CADET'}
 function refreshCareer(){
  $('pilotRank').textContent=rankTitle();$('pilotXp').textContent=career.xp+' XP';
@@ -241,25 +244,30 @@ function setLivery(){
 function syncSettings(){
  difficulty=$('difficulty').value;weather=$('weather').value;paintScheme=$('livery').value;
  timeOfDay=$('timeOfDay').value==='evening'?'evening':'day';
+ const desiredQuality=$('graphicsQuality')?.value==='low'?'low':'normal';
  trainingInstructions=$('trainingInstructions')?.value==='off'?'off':'on';
  $('app').dataset.weather=weather;
  const newAirfield=AIRFIELDS[$('airfield').value]?$('airfield').value:'flanders';
- if(newAirfield!==airfield){field.destroy();airfield=newAirfield;field=makeField(airfield)}
+ if(newAirfield!==airfield||desiredQuality!==graphicsQuality){
+  field.destroy();worldObjects.destroy();
+  airfield=newAirfield;graphicsQuality=desiredQuality;
+  field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);
+ }
  $('airfieldLabel').textContent=AIRFIELDS[airfield];
  if((paintScheme==='sky'&&career.xp<100)||(paintScheme==='ace'&&career.xp<400)){paintScheme='classic';$('livery').value='classic';announce('Earn XP to unlock that paint scheme.')}
  setLivery();saveCareer();updateLandingCoach();
 }
-for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions']){
+for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions','graphicsQuality']){
  const control=$(id);
  if(!control){
   // Older HTML may remain cached while a newer game.js loads. Training defaults ON.
-  if(id==='trainingInstructions'){console.warn('Training instructions selector missing in cached page; defaulting to On.');continue}
+  if(id==='trainingInstructions'||id==='graphicsQuality'){console.warn('Optional setting '+id+' missing in cached page; using default.');continue}
   throw Error('Required game setting missing: '+id+'. Refresh the page to load matching HTML and JavaScript.');
  }
  control.value=career.settings[id];
  control.addEventListener('change',syncSettings);
 }
-field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
+field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
 function setupMission(){
@@ -536,11 +544,11 @@ $('importSave').addEventListener('click',()=>$('importFile').click());
 $('resetCareer').addEventListener('click',()=>{
  if(!window.confirm('Delete saved ranks, XP, medals and mission records on this device? This cannot be undone without an exported backup.'))return;
  career=fallbackProgress();difficulty='arcade';weather='clear';paintScheme='classic';
- for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions='on';coachCollapsed=false;timeOfDay='day';airfield='flanders';field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
+ for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions','graphicsQuality']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions='on';graphicsQuality='normal';coachCollapsed=false;timeOfDay='day';airfield='flanders';field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
  saveCareer();selectedMission=0;missionPending=true;choose(0);
  announce('Pilot career reset. Export a backup before resetting next time.');
 });
-$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions=career.settings.trainingInstructions;coachCollapsed=false;airfield=career.settings.airfield;field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
+$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions','graphicsQuality']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions=career.settings.trainingInstructions;graphicsQuality=career.settings.graphicsQuality;coachCollapsed=false;airfield=career.settings.airfield;field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
 function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
@@ -663,7 +671,7 @@ if(!crashed){$('flightState').textContent=grounded?(brake?'BRAKES ON':state.spee
 // Start aligned behind the parked aircraft; do not ease from a camera hundreds of feet away.
 let camEye=[0,5.7,-153],camTarget=[0,2.0,-138],cameraSnap=true;
 function snapCamera(){cameraSnap=true;}
-function render(){const dpi=Math.min(window.devicePixelRatio||1,1.6),w=Math.max(1,Math.round(cv.clientWidth*dpi)),h=Math.max(1,Math.round(cv.clientHeight*dpi));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;gl.viewport(0,0,w,h)}
+function render(){const dpi=graphicsQuality==='low'?Math.min(window.devicePixelRatio||1,.8):Math.min(window.devicePixelRatio||1,1.6),w=Math.max(1,Math.round(cv.clientWidth*dpi)),h=Math.max(1,Math.round(cv.clientHeight*dpi));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;gl.viewport(0,0,w,h)}
 const dusk=timeOfDay==='evening'?1:0;
  if(dusk){if(weather==='storm')gl.clearColor(.34,.30,.39,1);else if(weather==='breezy')gl.clearColor(.75,.49,.48,1);else gl.clearColor(.95,.59,.44,1)}
  else if(weather==='storm')gl.clearColor(.42,.52,.60,1);else if(weather==='breezy')gl.clearColor(.57,.72,.79,1);else gl.clearColor(.61,.77,.87,1);
@@ -684,10 +692,10 @@ if(camera===2){
 if(cameraSnap){camEye=eye.slice();camTarget=target.slice();cameraSnap=false}
 else{const factor=1-Math.exp(-6/60);camEye=camEye.map((v,i)=>mix(v,eye[i],factor));camTarget=camTarget.map((v,i)=>mix(v,target[i],factor))}
 const view=viewMatrix(camEye,camTarget),proj=projection((camera===2?73:camera===1?62:61)*Math.PI/180,w/h,.15,2300);
-if(dusk)draw(sunsetSun,identity(),view,proj,camEye,true);
+if(dusk&&graphicsQuality!=='low')draw(sunsetSun,identity(),view,proj,camEye,true);
  draw(field,identity(),view,proj,camEye);
  draw(worldObjects,identity(),view,proj,camEye);
- if(dusk)draw(sunsetScenery,identity(),view,proj,camEye,true);
+ if(dusk&&graphicsQuality!=='low')draw(sunsetScenery,identity(),view,proj,camEye,true);
  if(active&&!missionFinished&&(selectedMission===1||selectedMission===3)){
   const indexLimit=selectedMission===3?5:checkpoints.length;
   for(let i=missionIndex;i<Math.min(indexLimit,missionIndex+3);i++){
@@ -713,7 +721,15 @@ if(dusk)draw(sunsetSun,identity(),view,proj,camEye,true);
 const orientation=multiply(yaw(state.yaw),multiply(pitch(-state.pitch),roll(-state.roll))),base=multiply(move(...pos),orientation);
 draw(model.mesh,base,view,proj,camEye);draw(model.prop,multiply(base,multiply(move(...model.offset),roll(propAngle))),view,proj,camEye)
 }
-function frame(time){const dt=Math.min(.055,Math.max(0,(time-last)/1000));last=time;step(dt);render();updateAudio();requestAnimationFrame(frame)}
+let lastRender=0;
+function frame(time){
+ const dt=Math.min(.055,Math.max(0,(time-last)/1000));last=time;
+ step(dt);
+ if(graphicsQuality==='normal'||!lastRender||time-lastRender>=33){
+  render();lastRender=time;
+ }
+ updateAudio();requestAnimationFrame(frame);
+}
 reset();requestAnimationFrame(frame);
 } catch (error) {
  console.error('Wings of 1918 startup failed:',error);
