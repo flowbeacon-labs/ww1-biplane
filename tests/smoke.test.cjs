@@ -22,11 +22,11 @@ function boot() {
       id, hidden:false, disabled:false, dataset:{}, innerHTML:'', textContent:'',
       value:({difficulty:'arcade',weather:'clear',livery:'classic'})[id]||'',
       files:[],
-      style:{width:'',transform:''},
+      style:{width:'',transform:''},attributes:{},
       events:{},
       classList:(()=>{const flags=new Set();return{add(key){flags.add(key);},remove(key){flags.delete(key);},contains(key){return flags.has(key);},toggle(key,force){if(force===true){flags.add(key);return true;}if(force===false){flags.delete(key);return false;}if(flags.has(key)){flags.delete(key);return false;}flags.add(key);return true;}}})(),
       addEventListener(type,fn){this.events[type]=fn;},
-      querySelectorAll(){return[];}, setAttribute(){},setPointerCapture(){},
+      querySelectorAll(){return[];}, setAttribute(name,value){this.attributes[name]=String(value);},setPointerCapture(){},
       getBoundingClientRect(){return{left:0,top:0,width:110,height:110};},
       click(){this.events.click?.();},remove(){},focus(){}
     });
@@ -141,10 +141,10 @@ test('Flight statistics start collapsed and can be toggled without stopping flig
  game.begin();
  toggle.events.click();
  assert.equal(element('app').classList.contains('stats-open'),true);
- assert.equal(toggle.textContent,'HIDE STATS');
+ assert.equal(toggle.attributes['aria-label'],'Hide flight statistics');
  toggle.events.click();
  assert.equal(element('app').classList.contains('stats-open'),false);
- assert.equal(toggle.textContent,'STATS');
+ assert.equal(toggle.attributes['aria-label'],'Show flight statistics');
  assert.equal(element('menu').hidden,true);
 });
 
@@ -305,4 +305,26 @@ test('Tutorial stays hidden in non-solo missions',()=>{
  game.begin();
  assert.equal(element('landingCoach').hidden,true);
  assert.equal(element('app').classList.contains('flight-active'),true);
+});
+
+test('SVG action icons remain intact after toggling sound and statistics',()=>{
+ const {element}=boot();
+ const sound=element('sound'),stats=element('hudToggle');
+ sound.events.click();
+ assert.equal(sound.attributes['aria-pressed'],'true');
+ assert.equal(sound.attributes['aria-label'],'Disable engine sound');
+ stats.events.click();
+ assert.equal(stats.attributes['aria-label'],'Hide flight statistics');
+ stats.events.click();
+ assert.equal(stats.attributes['aria-label'],'Show flight statistics');
+});
+test('Flight touch and joystick controls prevent the long-press context menu',()=>{
+ const {element}=boot();
+ for(const id of ['touch','camera','coachToggle']){
+  const control=element(id);
+  let stopped=false;
+  assert.equal(typeof control.events.contextmenu,'function');
+  control.events.contextmenu({preventDefault(){stopped=true;}});
+  assert.equal(stopped,true,id+' context menu not suppressed');
+ }
 });
