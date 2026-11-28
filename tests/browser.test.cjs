@@ -43,6 +43,21 @@ const path=require('node:path');
  const hiddenTips=await page.evaluate(()=>document.getElementById('landingCoach').classList.contains('coach-collapsed'));
  if(!hiddenTips)throw Error('Hide landing tips did not work');
  await page.locator('#coachToggle').click();
+ const iconUI=await page.evaluate(()=>{
+  const ids=['throttleUp','throttleDown','brake','camera','fire','photo','sound','pauseFlight','backToPlanes','hudToggle'];
+  return ids.map(id=>{const el=document.getElementById(id),svg=el?.querySelector('svg');
+   return{id,hasSvg:!!svg,iconHidden:svg?.getAttribute('aria-hidden'),touchCallout:getComputedStyle(el).getPropertyValue('-webkit-touch-callout'),userSelect:getComputedStyle(el).userSelect};
+  });
+ });
+ console.log('FLIGHT ICONS',JSON.stringify(iconUI));
+ if(iconUI.some(i=>!i.hasSvg||i.iconHidden!=='true'||i.userSelect!=='none'))throw Error('Icon buttons incomplete: '+JSON.stringify(iconUI));
+ const calloutSuppressed=await page.evaluate(()=>{
+  const ev=new MouseEvent('contextmenu',{bubbles:true,cancelable:true});
+  const allowed=document.getElementById('throttleUp').dispatchEvent(ev);
+  return !allowed;
+ });
+ if(!calloutSuppressed)throw Error('Throttle long-press context menu is not blocked');
+
  await page.screenshot({path:'flight-startup.png'});
  for(const width of [590,900,1280]){
   await page.setViewportSize({width,height:800});
