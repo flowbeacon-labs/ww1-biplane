@@ -241,7 +241,7 @@ function setLivery(){
 function syncSettings(){
  difficulty=$('difficulty').value;weather=$('weather').value;paintScheme=$('livery').value;
  timeOfDay=$('timeOfDay').value==='evening'?'evening':'day';
- trainingInstructions=$('trainingInstructions').value==='off'?'off':'on';
+ trainingInstructions=$('trainingInstructions')?.value==='off'?'off':'on';
  $('app').dataset.weather=weather;
  const newAirfield=AIRFIELDS[$('airfield').value]?$('airfield').value:'flanders';
  if(newAirfield!==airfield){field.destroy();airfield=newAirfield;field=makeField(airfield)}
@@ -249,7 +249,16 @@ function syncSettings(){
  if((paintScheme==='sky'&&career.xp<100)||(paintScheme==='ace'&&career.xp<400)){paintScheme='classic';$('livery').value='classic';announce('Earn XP to unlock that paint scheme.')}
  setLivery();saveCareer();updateLandingCoach();
 }
-for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions']){$(id).value=career.settings[id];$(id).addEventListener('change',syncSettings)}
+for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions']){
+ const control=$(id);
+ if(!control){
+  // Older HTML may remain cached while a newer game.js loads. Training defaults ON.
+  if(id==='trainingInstructions'){console.warn('Training instructions selector missing in cached page; defaulting to On.');continue}
+  throw Error('Required game setting missing: '+id+'. Refresh the page to load matching HTML and JavaScript.');
+ }
+ control.value=career.settings[id];
+ control.addEventListener('change',syncSettings);
+}
 field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
@@ -511,11 +520,11 @@ $('importSave').addEventListener('click',()=>$('importFile').click());
 $('resetCareer').addEventListener('click',()=>{
  if(!window.confirm('Delete saved ranks, XP, medals and mission records on this device? This cannot be undone without an exported backup.'))return;
  career=fallbackProgress();difficulty='arcade';weather='clear';paintScheme='classic';
- for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions'])$(id).value=career.settings[id];trainingInstructions='on';coachCollapsed=false;timeOfDay='day';airfield='flanders';field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
+ for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions='on';coachCollapsed=false;timeOfDay='day';airfield='flanders';field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
  saveCareer();selectedMission=0;missionPending=true;choose(0);
  announce('Pilot career reset. Export a backup before resetting next time.');
 });
-$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions'])$(id).value=career.settings[id];trainingInstructions=career.settings.trainingInstructions;coachCollapsed=false;airfield=career.settings.airfield;field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
+$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions=career.settings.trainingInstructions;coachCollapsed=false;airfield=career.settings.airfield;field.destroy();field=makeField(airfield);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
 function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
