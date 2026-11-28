@@ -82,3 +82,39 @@
  .coach-header span{font-size:9px;letter-spacing:.03em}
  .coach-header button{font-size:9px;padding:3px 5px}
 }
+
+/* iOS Safari flight controls: prohibit long-press callout and text selection only
+   in control surfaces. The mission menu, selects, and form inputs remain native. */
+#touch,#touch *, .flight-actions,.flight-actions *, .navigation-actions,.navigation-actions *,
+#camera,#camera *,#coachToggle,#coachToggle *{
+ -webkit-touch-callout:none!important;
+ -webkit-user-select:none!important;
+ user-select:none!important;
+ -webkit-tap-highlight-color:transparent;
+}
+#touch,#joyArea,#joyBase,#joyKnob,.hold-control,[data-control]{
+ touch-action:none!important;
+ overscroll-behavior:contain;
+}
+.flight-actions button,.navigation-actions button,#camera,#coachToggle,#brake{
+ touch-action:manipulation;
+}
+.control-icon{display:block;width:22px;height:22px;flex:0 0 auto;pointer-events:none}
+.icon-control{display:inline-flex!important;align-items:center;justify-content:center;gap:4px;min-height:44px;min-width:44px}
+.control-hint{font-size:9px;letter-spacing:.02em;font-weight:800;line-height:1.1;pointer-events:none}
+#camera.icon-control,.navigation-actions .icon-control{flex-direction:column}
+.flight-actions .icon-control{flex-direction:column}
+#sound .sound-slash{display:block}
+#sound .sound-wave{display:none}
+#sound.sound-enabled .sound-slash{display:none}
+#sound.sound-enabled .sound-wave{display:block}
+#brake.on{box-shadow:0 0 0 2px #f1b777aa inset}
+#throttleUp,#throttleDown{touch-action:none!important}
+@media(max-width:680px){
+ .flight-actions .icon-control{min-width:39px;min-height:44px;padding:7px 5px}
+ .flight-actions .control-hint{font-size:8px}
+ #touch .control-icon{width:20px;height:20px}
+ #brake.icon-control{min-width:43px}
+ .navigation-actions .icon-control{min-width:39px;min-height:42px}
+ .navigation-actions .control-hint{font-size:8px}
+}
