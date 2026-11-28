@@ -150,3 +150,19 @@
 @media(max-width:700px){
  #touch{gap:5px}
 }
+
+/* Protect document-wide text only WHILE the virtual joystick is held.
+   Safari can start selecting sibling HUD text even if the stick has user-select:none. */
+html.joystick-held,html.joystick-held body,html.joystick-held body *{
+ -webkit-user-select:none!important;
+ user-select:none!important;
+ -webkit-touch-callout:none!important;
+}
+html.joystick-held{touch-action:none}
+#touch,#joyArea,#joyBase,#joyKnob,#joyBase span{
+ -webkit-user-select:none!important;
+ user-select:none!important;
+ -webkit-touch-callout:none!important;
+ -webkit-tap-highlight-color:transparent;
+ touch-action:none!important;
+}
