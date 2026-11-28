@@ -91,8 +91,19 @@ const path=require('node:path');
  await page.mouse.move(centerX+28,centerY-24,{steps:4});
  const moved=await page.locator('#joyKnob').evaluate(el=>el.style.transform);
  if(!moved||moved==='translate(0,0)')throw Error('Mouse joystick drag did not move knob: '+moved);
+ const duringHold=await page.evaluate(()=>({
+  locked:document.documentElement.classList.contains('joystick-held'),
+  selection:getComputedStyle(document.body).userSelect
+ }));
+ if(!duringHold.locked||duringHold.selection!=='none')throw Error('Document text remains selectable during joystick hold: '+JSON.stringify(duringHold));
+ const selectionBlocked=await page.evaluate(()=>{
+  const ev=new Event('selectstart',{bubbles:true,cancelable:true});
+  return !document.getElementById('coachTitle').dispatchEvent(ev);
+ });
+ if(!selectionBlocked)throw Error('Long-press text selection not prevented while steering');
  await page.mouse.up();
  const centered=await page.locator('#joyKnob').evaluate(el=>el.style.transform);
+ if(await page.evaluate(()=>document.documentElement.classList.contains('joystick-held')))throw Error('Joystick selection lock remained after release');
  if(centered!=='translate(0,0)')throw Error('Joystick failed to center after mouse release: '+centered);
 
  // Touchscreen laptop emulation: desktop viewport and both mouse/touch available.
@@ -108,9 +119,11 @@ const path=require('node:path');
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:touchX,y:touchY,id:1}]});
  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:touchX+29,y:touchY-20,id:1}]});
  const touchMove=await hybrid.locator('#joyKnob').evaluate(el=>el.style.transform);
+ if(!(await hybrid.evaluate(()=>document.documentElement.classList.contains('joystick-held'))))throw Error('Touchscreen joystick did not lock page selection');
  if(!touchMove||touchMove==='translate(0,0)')throw Error('Touchscreen laptop virtual joystick failed to respond');
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  const touchStop=await hybrid.locator('#joyKnob').evaluate(el=>el.style.transform);
+ if(await hybrid.evaluate(()=>document.documentElement.classList.contains('joystick-held')))throw Error('Touchscreen joystick selection lock not released');
  if(touchStop!=='translate(0,0)')throw Error('Touchscreen laptop joystick did not reset after release');
  await hybridContext.close();
  console.log('DESKTOP AND TOUCHSCREEN JOYSTICK',JSON.stringify({desktop:moved,hybrid:touchMove}));
