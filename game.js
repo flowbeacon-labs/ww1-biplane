@@ -439,7 +439,7 @@ $('importFile').addEventListener('change',async()=>{const file=$('importFile').f
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
 function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
-$('sound').addEventListener('click',()=>{soundEnabled=!soundEnabled;if(soundEnabled){audioSetup();audioContext?.resume()}$('sound').textContent=soundEnabled?'SOUND ON':'SOUND OFF'});
+$('sound').addEventListener('click',()=>{soundEnabled=!soundEnabled;if(soundEnabled){audioSetup();audioContext?.resume()}$('sound').classList.toggle('sound-enabled',soundEnabled);$('sound').setAttribute('aria-pressed',String(soundEnabled));$('sound').setAttribute('aria-label',soundEnabled?'Disable engine sound':'Enable engine sound');$('sound').title=soundEnabled?'Sound on':'Sound off'});
 function updateAudio(){if(!audioContext||!engineOsc||!engineGain)return;const now=audioContext.currentTime;engineOsc.frequency.setTargetAtTime(52+state.throttle*70,now,.12);engineGain.gain.setTargetAtTime(soundEnabled&&active&&!paused?.025+state.throttle*.045:0,now,.12)}
 function joystickInput(){return{x:joystick.x,y:joystick.y}}
 const joy=$('joyArea'),knob=$('joyKnob');
@@ -466,7 +466,7 @@ function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Ea
 $('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+(p.unlock?' · '+p.unlock+' XP unlock':'')+'</small></button>').join('');
 document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>choose(+b.dataset.index)));choose(0);
 function announce(t){$('notice').textContent=t}
-function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});setupMission();snapCamera();grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
+function reset(){Object.assign(state,{x:0,y:.48,z:-140,yaw:0,pitch:0,roll:0,speed:0,vs:0,throttle:0});$('brake').setAttribute('aria-pressed','true');setupMission();snapCamera();grounded=true;brake=true;crashed=false;touch.clear();keys.clear();$('brake').classList.add('on');announce('Increase power, release wheel brake and accelerate along the runway.')}
 let last=performance.now();
 function begin(){reset();missionPending=false;planePending=false;career.flights++;saveCareer();active=true;paused=false;$('menu').hidden=true;$('app').classList.add('flight-active');$('start').textContent='RESUME FLIGHT →';last=performance.now();updateLandingCoach()}
 $('start').addEventListener('click',()=>{if(active&&paused&&!crashed&&!missionPending&&!planePending){paused=false;$('menu').hidden=true;$('app').classList.add('flight-active');updateLandingCoach();last=performance.now()}else begin()});
@@ -486,17 +486,24 @@ const statsButton=$('hudToggle');
 statsButton.addEventListener('click',()=>{
  const expanded=$('app').classList.toggle('stats-open');
  statsButton.setAttribute('aria-pressed',String(expanded));
- statsButton.textContent=expanded?'HIDE STATS':'STATS';
+ statsButton.setAttribute('aria-label',expanded?'Hide flight statistics':'Show flight statistics');statsButton.title=expanded?'Hide statistics':'Show statistics';
 });
 
-$('camera').addEventListener('click',()=>{camera=(camera+1)%3;snapCamera();$('camName').textContent=['CHASE','CLOSE','COCKPIT'][camera]});
+$('camera').addEventListener('click',()=>{camera=(camera+1)%3;snapCamera();const label=['Chase','Close','Cockpit'][camera];$('camName').textContent=label.toUpperCase();$('camera').setAttribute('aria-label','Change camera view: '+label)});
 const keyMap={KeyW:'w',KeyS:'s',KeyA:'a',KeyD:'d',KeyQ:'q',KeyE:'e',ArrowUp:'up',ArrowDown:'down'};
-document.addEventListener('keydown',e=>{let k=keyMap[e.code];if(k){keys.add(k);e.preventDefault()}if(e.repeat)return;if(e.code==='Space'){brake=!brake;$('brake').classList.toggle('on',brake);e.preventDefault()}if(e.code==='KeyC')$('camera').click();if(e.code==='KeyR'){begin()}if(e.code==='Escape')pause();if(e.code==='KeyF')shoot();if(e.code==='KeyP')takePhoto();if(e.code==='KeyM')pause()});
+document.addEventListener('keydown',e=>{let k=keyMap[e.code];if(k){keys.add(k);e.preventDefault()}if(e.repeat)return;if(e.code==='Space'){brake=!brake;$('brake').classList.toggle('on',brake);$('brake').setAttribute('aria-pressed',String(brake));e.preventDefault()}if(e.code==='KeyC')$('camera').click();if(e.code==='KeyR'){begin()}if(e.code==='Escape')pause();if(e.code==='KeyF')shoot();if(e.code==='KeyP')takePhoto();if(e.code==='KeyM')pause()});
 document.addEventListener('keyup',e=>{let k=keyMap[e.code];if(k){keys.delete(k);e.preventDefault()}});
 window.addEventListener('blur',()=>{keys.clear();touch.clear();if(active&&!paused)pause()});
 document.querySelectorAll('[data-control]').forEach(el=>{const k=el.dataset.control;el.addEventListener('pointerdown',e=>{touch.add(k);el.setPointerCapture(e.pointerId);e.preventDefault()});for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,()=>touch.delete(k))});
 for(const [id,k] of [['throttleUp','up'],['throttleDown','down']]){const el=$(id);el.addEventListener('pointerdown',e=>{touch.add(k);el.setPointerCapture(e.pointerId);e.preventDefault()});for(const event of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(event,()=>touch.delete(k))}
-$('brake').addEventListener('click',()=>{brake=!brake;$('brake').classList.toggle('on',brake)});
+$('brake').addEventListener('click',()=>{brake=!brake;$('brake').classList.toggle('on',brake);$('brake').setAttribute('aria-pressed',String(brake))});
+// Prevent Safari's text selection/callout while holding actual flight controls.
+// Restrict suppression to game controls; menu selects and file import stay native.
+for(const surface of [$('touch'),document.querySelector('.flight-actions'),document.querySelector('.navigation-actions'),$('camera'),$('coachToggle')]){
+ if(!surface)continue;
+ surface.addEventListener('contextmenu',event=>event.preventDefault());
+ surface.addEventListener('selectstart',event=>event.preventDefault());
+}
 const held=k=>keys.has(k)||touch.has(k),axis=(a,b)=>(held(a)?1:0)-(held(b)?1:0);
 function step(dt){if(!active||paused||crashed)return;const p=planes[selected],joyInput=joystickInput(),w=clamp(axis('w','s')+joyInput.y,-1,1),a=clamp(axis('d','a')+joyInput.x,-1,1),r=axis('e','q');state.throttle=clamp(state.throttle+axis('up','down')*dt*.29,0,1);
 if(selectedMission===4&&missionStage===1)state.throttle=Math.min(state.throttle,.20);
