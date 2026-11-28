@@ -128,6 +128,35 @@ const path=require('node:path');
  await hybridContext.close();
  console.log('DESKTOP AND TOUCHSCREEN JOYSTICK',JSON.stringify({desktop:moved,hybrid:touchMove}));
 
+
+ // Switching graphic quality must not reset a running flight or prevent render.
+ const originalCanvas=await page.locator('#flight').evaluate(el=>({w:el.width,h:el.height}));
+ await page.locator('#pauseFlight').click();
+ await page.locator('#graphicsQuality').selectOption('low');
+ await page.locator('#start').click();
+ await page.waitForTimeout(250);
+ const lowQuality=await page.evaluate(()=>({
+  quality:document.getElementById('graphicsQuality').value,
+  canvasWidth:document.getElementById('flight').width,
+  canvasHeight:document.getElementById('flight').height,
+  playing:document.getElementById('menu').hidden,
+  saved:JSON.parse(localStorage.getItem('flowbeacon-wings-career-v1')).settings.graphicsQuality
+ }));
+ if(lowQuality.quality!=='low'||lowQuality.saved!=='low'||!lowQuality.playing||
+    lowQuality.canvasWidth>=originalCanvas.w)throw Error('Low quality switch failed: '+JSON.stringify(lowQuality));
+ await page.locator('#pauseFlight').click();
+ await page.locator('#graphicsQuality').selectOption('normal');
+ await page.locator('#start').click();
+ await page.waitForTimeout(250);
+ const normalQuality=await page.evaluate(()=>({
+  canvasWidth:document.getElementById('flight').width,
+  playing:document.getElementById('menu').hidden,
+  saved:JSON.parse(localStorage.getItem('flowbeacon-wings-career-v1')).settings.graphicsQuality
+ }));
+ if(normalQuality.saved!=='normal'||!normalQuality.playing||
+    normalQuality.canvasWidth!==originalCanvas.w)throw Error('Normal quality restore failed: '+JSON.stringify(normalQuality));
+ console.log('GRAPHICS MODES',JSON.stringify({originalCanvas,lowQuality,normalQuality}));
+
  await page.screenshot({path:'flight-startup.png'});
  for(const width of [590,900,1280]){
   await page.setViewportSize({width,height:800});
