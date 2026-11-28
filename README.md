@@ -120,3 +120,7 @@ The syntax and mocked-browser regression suite are run by GitHub Actions. The su
 **Important limitations:** Tests using a simulated graphics context are not full visual browser tests. Real iPhone Safari and desktop GPU rendering, touch comfort, audio playback, long-session performance and historical authenticity need device QA. Mission logic and AI are simplified: no multiplayer, real ballistics, historically accurate instruments, real geography, or certified aircraft physics. Aircraft damage is represented by a hull score and practice fire, not structural damage modeling.
 
 See the troubleshooting guide and backlog for further improvements.
+
+## iPhone touch controls and icons
+
+Flight actions (throttle up/down, brake, camera, sound, pause, fire, photo, plane selection and statistics) use icon-first accessible controls. On iPhone Safari, long-press callouts and text selection are disabled only over flight controls; native menu inputs remain unchanged. Press and hold **+** or **−** to adjust throttle; release to stop changing power. The joystick accepts touch and drag. SVG icons retain accessible labels for VoiceOver.
