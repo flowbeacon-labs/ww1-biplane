@@ -299,12 +299,13 @@ test('Landing coach has five steps with aircraft-specific target speeds and dire
  assert.equal(flare.step,5);
  assert.match(flare.instruction,/level|settle|POWER|nose/i);
 });
-test('Tutorial stays hidden in non-solo missions',()=>{
+test('Every mission now displays training by default',()=>{
  const {game,element}=boot();
  game.setMission(1);
  game.begin();
- assert.equal(element('landingCoach').hidden,true);
+ assert.equal(element('landingCoach').hidden,false);
  assert.equal(element('app').classList.contains('flight-active'),true);
+ assert.match(element('coachTitle').textContent,/Sky Ring|Take off/);
 });
 
 test('SVG action icons remain intact after toggling sound and statistics',()=>{
