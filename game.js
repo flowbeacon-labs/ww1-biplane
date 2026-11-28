@@ -210,7 +210,63 @@ const friendlyWingmen=[{offset:-17,phase:0,color:'#dfc18c'},{offset:17,phase:2,c
 const aiShape=makeAircraft(planes[3]),enemyShape=makeAircraft(planes[1]);
 const markerMeshes=(()=>{const ring=new Mesh(),gold=D.gold;for(let i=0;i<40;i++){const a=i*TAU/40,b=(i+1)*TAU/40;ring.tube([Math.cos(a)*10,Math.sin(a)*10,0],[Math.cos(b)*10,Math.sin(b)*10,0],.58,i%2?D.white:gold,5)}
  return {ring,marker:ring}})();
+// Quiet remembrance garden is placed west of the home runway, outside all
+// landing zones and the checkpoint-ring corridor. Visual only, no collision.
+const WAR_MEMORIAL=Object.freeze({x:-195,z:125,flagHeight:17});
+function buildMemorialBase(m){
+ const {x,z,flagHeight}=WAR_MEMORIAL;
+ m.box(x,0.18,z,24,.35,23,D.strip);
+ for(const side of [-1,1]){
+  m.box(x+side*9,1.1,z,1.8,1.8,17,D.steel);
+  m.box(x+side*9,2.2,z,2.5,.5,18,D.white);
+ }
+ m.box(x,1.2,z-2,10,2.4,7,D.steel);
+ m.box(x,3.3,z-2,7,2.1,4.5,D.white);
+ m.box(x,5.9,z-2,2.1,3.4,2.1,D.steel);
+ m.box(x,7.8,z-2,3.6,.6,3.6,D.white);
+ m.box(x,3.55,z-4.35,4.8,.45,.12,D.gold); // plaque
+ m.tube([x-9,0,z+7],[x-9,flagHeight,z+7],.28,D.steel,8);
+ m.box(x-9,flagHeight+.25,z+7,1,.5,1,D.gold);
+ for(const dx of [-6,-3,0,3,6])m.box(x+dx,.5,z+6,1,1.0,1.8,dx%2?D.white:D.red);
+}
+// Flag geometry faces north/south and uses only a few triangles; regenerate
+// when the chosen aircraft country changes, releasing its old GPU buffers.
+function makeMemorialFlag(country){
+ const m=new Mesh(),{x,z,flagHeight}=WAR_MEMORIAL;
+ const poleX=x-9,baseX=poleX+.45,baseZ=z+7;
+ const w=11,h=6,top=flagHeight-.7;
+ const panel=(px,py,pw,ph,c)=>m.box(baseX+px,top-py,baseZ,pw,ph,.12,c);
+ const white=[.96,.95,.89],red=[.82,.15,.13],blue=[.11,.20,.52],black=[.10,.10,.12],gold=[.95,.78,.18],green=[.10,.51,.24];
+ const side=country==='France'||country==='Italy';
+ const colors=country==='France'?[blue,white,red]:[green,white,red];
+ if(side){
+  for(let i=0;i<3;i++)panel((i+.5)*w/3,(h/2),w/3,h,colors[i]);
+ }else if(country==='Germany'){
+  for(let i=0;i<3;i++)panel(w/2,(i+.5)*h/3,w,h/3,[black,red,gold][i]);
+ }else if(country==='United States'){
+  for(let i=0;i<13;i++)panel(w/2,(i+.5)*h/13,w,h/13,i%2===0?red:white);
+  panel(w*.21,h*.27,w*.42,h*.54,blue);
+  for(let row=0;row<4;row++)for(let col=0;col<5;col++)
+   panel(.48+col*.82,.55+row*.66,.23,.23,white);
+ }else{ // Simplified Union Jack for United Kingdom
+  panel(w/2,h/2,w,h,blue);
+  const diagonals=[
+   [[0,0],[w,h]],[[0,h],[w,0]]
+  ];
+  for(const [a,b] of diagonals){
+   const segments=20;
+   for(let i=0;i<segments;i++){
+    const t=(i+.5)/segments,px=a[0]+(b[0]-a[0])*t,py=a[1]+(b[1]-a[1])*t;
+    panel(px,py,w/segments+0.3,.55,white);
+   }
+  }
+  panel(w/2,h/2,w,1.5,white);panel(w/2,h/2,1.8,h,white);
+  panel(w/2,h/2,w,.68,red);panel(w/2,h/2,.85,h,red);
+ }
+ return m;
+}
 function makeWorldObjects(quality='normal'){const m=new Mesh();const low=quality==='low';const r=()=>Math.random();
+ buildMemorialBase(m);
  // River and a stone bridge, deliberately outside the takeoff strip.
  m.box(355,-.07,150,53,.06,780,[.22,.50,.64]);
  m.box(355,1.2,315,63,2.5,10,D.steel);
@@ -234,6 +290,7 @@ function makeWorldObjects(quality='normal'){const m=new Mesh();const low=quality
  return m;
 }
 let worldObjects=makeWorldObjects(graphicsQuality);
+let memorialFlag=makeMemorialFlag(planes[selected].country);
 function saveCareer(){career.settings={difficulty,weather,livery:paintScheme,airfield,timeOfDay,trainingInstructions,graphicsQuality};try{localStorage.setItem(SAVE_KEY,JSON.stringify(cleanCareer(career)))}catch{announce('Save unavailable. Export your pilot file to back up progress.')}refreshCareer()}
 function rankTitle(){return career.xp>=2500?'ACE PILOT':career.xp>=1250?'SQUADRON LEADER':career.xp>=600?'FLYING OFFICER':career.xp>=200?'TRAINEE PILOT':'FLIGHT CADET'}
 function refreshCareer(){
@@ -609,7 +666,8 @@ const fsource='precision mediump float;uniform float uDusk;varying vec3 vCol;var
 const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vsource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fsource));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
 const attributes=['aPos','aNrm','aCol'].map(k=>gl.getAttribLocation(program,k)),uniforms=['uModel','uView','uProj','uEye'].map(k=>gl.getUniformLocation(program,k)),duskUniform=gl.getUniformLocation(program,'uDusk'),emissiveUniform=gl.getUniformLocation(program,'uEmissive');
 function draw(mesh,mat,view,proj,eye,unlit=false){mesh.upload();gl.uniform1f(emissiveUniform,unlit?1:0);for(const [loc,m] of [[uniforms[0],mat],[uniforms[1],view],[uniforms[2],proj]])gl.uniformMatrix4fv(loc,false,new Float32Array(m));gl.uniform3fv(uniforms[3],new Float32Array(eye));mesh.buf.forEach((b,i)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(attributes[i]);gl.vertexAttribPointer(attributes[i],3,gl.FLOAT,false,0,0)});gl.drawArrays(gl.TRIANGLES,0,mesh.count)}
-function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}if(selected!==i)planePending=true;selected=i;setLivery();const p=planes[i];$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
+function choose(i){if(planes[i].unlock&&career.xp<planes[i].unlock){announce('Earn '+planes[i].unlock+' XP to unlock '+planes[i].name+'.');return}if(selected!==i)planePending=true;selected=i;setLivery();const p=planes[i];
+ if(memorialFlag){memorialFlag.destroy();memorialFlag=makeMemorialFlag(p.country)}$('aircraftInfo').textContent=p.details+' The models and flight physics are historical-inspired approximations.';$('selectedAircraft').textContent=p.name+' · '+p.country;document.querySelectorAll('.plane').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.index===i)))}
 $('planes').innerHTML=planes.map((p,i)=>'<button class="plane" data-index="'+i+'" aria-pressed="'+(i===0)+'"><span class="flag">'+p.flag+'</span><strong>'+p.name+'</strong><small>'+p.country+' · '+p.year+' · '+(p.levels===3?'Triplane':'Biplane')+(p.unlock?' · '+p.unlock+' XP unlock':'')+'</small></button>').join('');
 document.querySelectorAll('.plane').forEach(b=>b.addEventListener('click',()=>choose(+b.dataset.index)));choose(0);
 function announce(t){$('notice').textContent=t}
@@ -705,6 +763,7 @@ const view=viewMatrix(camEye,camTarget),proj=projection((camera===2?73:camera===
 if(dusk&&graphicsQuality!=='low')draw(sunsetSun,identity(),view,proj,camEye,true);
  draw(field,identity(),view,proj,camEye);
  draw(worldObjects,identity(),view,proj,camEye);
+ draw(memorialFlag,identity(),view,proj,camEye);
  if(dusk)draw(sunsetScenery,identity(),view,proj,camEye,true);
  if(active&&!missionFinished&&(selectedMission===1||selectedMission===3)){
   const indexLimit=selectedMission===3?5:checkpoints.length;
