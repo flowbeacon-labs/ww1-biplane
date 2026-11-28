@@ -79,6 +79,39 @@ const path=require('node:path');
  if(training.hidden)throw Error('Instructions ON failed: '+JSON.stringify(training));
  console.log('TRAINING MODE',JSON.stringify(training));
 
+
+ // Desktop joystick must be visible even when the primary pointer is a mouse.
+ const joy=page.locator('#joyArea');
+ if(!(await joy.isVisible()))throw Error('Circular joystick hidden on desktop');
+ const bounds=await joy.boundingBox();
+ if(!bounds||bounds.width<80||bounds.height<80)throw Error('Joystick too small on desktop');
+ const centerX=bounds.x+bounds.width/2,centerY=bounds.y+bounds.height/2;
+ await page.mouse.move(centerX,centerY);
+ await page.mouse.down();
+ await page.mouse.move(centerX+28,centerY-24,{steps:4});
+ const moved=await page.locator('#joyKnob').evaluate(el=>el.style.transform);
+ if(!moved||moved==='translate(0,0)')throw Error('Mouse joystick drag did not move knob: '+moved);
+ await page.mouse.up();
+ const centered=await page.locator('#joyKnob').evaluate(el=>el.style.transform);
+ if(centered!=='translate(0,0)')throw Error('Joystick failed to center after mouse release: '+centered);
+
+ // Touchscreen laptop emulation: desktop viewport and both mouse/touch available.
+ const hybridContext=await browser.newContext({viewport:{width:1280,height:800},hasTouch:true,isMobile:false});
+ const hybrid=await hybridContext.newPage();
+ await hybrid.goto('file://'+path.resolve(__dirname,'../index.html'),{waitUntil:'load'});
+ await hybrid.locator('#start').click();
+ const hybridVisible=await hybrid.locator('#joyArea').isVisible();
+ if(!hybridVisible)throw Error('Touchscreen laptop joystick is hidden');
+ await hybrid.locator('#joyArea').dispatchEvent('pointerdown',{pointerId:17,pointerType:'touch',clientX:58,clientY:60,button:0,bubbles:true});
+ await hybrid.locator('#joyArea').dispatchEvent('pointermove',{pointerId:17,pointerType:'touch',clientX:82,clientY:32,bubbles:true});
+ const touchMove=await hybrid.locator('#joyKnob').evaluate(el=>el.style.transform);
+ if(!touchMove||touchMove==='translate(0,0)')throw Error('Touchscreen laptop virtual joystick failed to respond');
+ await hybrid.locator('#joyArea').dispatchEvent('pointerup',{pointerId:17,pointerType:'touch',bubbles:true});
+ const touchStop=await hybrid.locator('#joyKnob').evaluate(el=>el.style.transform);
+ if(touchStop!=='translate(0,0)')throw Error('Touchscreen laptop joystick did not reset after release');
+ await hybridContext.close();
+ console.log('DESKTOP AND TOUCHSCREEN JOYSTICK',JSON.stringify({desktop:moved,hybrid:touchMove}));
+
  await page.screenshot({path:'flight-startup.png'});
  for(const width of [590,900,1280]){
   await page.setViewportSize({width,height:800});
