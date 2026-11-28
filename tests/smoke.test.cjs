@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'game.js'), 'utf8');
 const HOOK = 'reset();requestAnimationFrame(frame);';
 
-function boot() {
+function boot({missingIds=[]}={}) {
   assert.ok(SOURCE.includes(HOOK), 'Game startup hook must remain available');
   const script = SOURCE.replace(HOOK, [
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
@@ -39,7 +39,7 @@ function boot() {
   const canvas=element('flight');canvas.getContext=()=>gl;canvas.clientWidth=1100;canvas.clientHeight=720;
   const saved=new Map(),events={};
   const ctx={
-    document:{getElementById:element,querySelectorAll:()=>[],addEventListener:(type,fn)=>{events[type]=fn;},body:{appendChild(){}}},
+    document:{getElementById:id=>missingIds.includes(id)?null:element(id),querySelectorAll:()=>[],addEventListener:(type,fn)=>{events[type]=fn;},body:{appendChild(){}}},
     window:{devicePixelRatio:1,addEventListener(){},confirm:()=>false},
     localStorage:{getItem:key=>saved.get(key)||null,setItem:(key,value)=>saved.set(key,value)},
     performance:{now:()=>0},requestAnimationFrame(){},setTimeout(){},
@@ -371,4 +371,12 @@ test('Mission completion transitions to runway guidance for every mission',()=>{
   const guide=game.missionLessonSnapshot();
   assert.match(guide.instruction,/runway|airstrip|strip|POWER|landing|approach|turn|Turn/i,'mission '+mission);
  }
+});
+
+test('Cached older HTML missing training selector does not prevent launch',()=>{
+ const {game,element}=boot({missingIds:['trainingInstructions']});
+ assert.equal(game.getTraining(),'on');
+ game.begin();game.render();
+ assert.equal(element('menu').hidden,true);
+ assert.equal(element('landingCoach').hidden,false);
 });
