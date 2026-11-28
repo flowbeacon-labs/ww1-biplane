@@ -124,3 +124,9 @@ See the troubleshooting guide and backlog for further improvements.
 ## iPhone touch controls and icons
 
 Flight actions (throttle up/down, brake, camera, sound, pause, fire, photo, plane selection and statistics) use icon-first accessible controls. On iPhone Safari, long-press callouts and text selection are disabled only over flight controls; native menu inputs remain unchanged. Press and hold **+** or **−** to adjust throttle; release to stop changing power. The joystick accepts touch and drag. SVG icons retain accessible labels for VoiceOver.
+
+## Graphics quality and memory
+
+Open Flight Settings and select **Graphics quality: Normal** (default) or **Low**. Low graphics uses roughly half-resolution render targets on high-DPI screens (up to 0.8× pixel scaling versus up to 1.6×), reduced terrain patches, trees, distant buildings/clouds, and a roughly 30 fps draw cap. It also removes the decorative full-screen weather effect, but **keeps all four runways, evening runway edge lights, mission objectives and flight physics**.
+
+Graphics quality can be changed during a paused flight without restarting the mission and is saved in pilot career preferences. Old saves default to Normal. Replaced scenery meshes dispose their WebGL buffers, and CPU geometry data is released after uploading to the GPU to reduce duplicate memory use. Actual memory savings vary by browser and device and have not yet been measured on a physical phone.
