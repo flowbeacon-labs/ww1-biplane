@@ -246,7 +246,7 @@ function syncSettings(){
  timeOfDay=$('timeOfDay').value==='evening'?'evening':'day';
  const desiredQuality=$('graphicsQuality')?.value==='low'?'low':'normal';
  trainingInstructions=$('trainingInstructions')?.value==='off'?'off':'on';
- $('app').dataset.weather=weather;
+ $('app').dataset.weather=weather;$('app').dataset.graphics=desiredQuality;
  const newAirfield=AIRFIELDS[$('airfield').value]?$('airfield').value:'flanders';
  if(newAirfield!==airfield||desiredQuality!==graphicsQuality){
   field.destroy();worldObjects.destroy();
@@ -267,7 +267,7 @@ for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainin
  control.value=career.settings[id];
  control.addEventListener('change',syncSettings);
 }
-field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
+field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('app').dataset.graphics=graphicsQuality;$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
 $('missionMenu').addEventListener('click',()=>{pause()});
 $('pauseFlight').addEventListener('click',()=>{pause()});
 function setupMission(){
@@ -544,11 +544,11 @@ $('importSave').addEventListener('click',()=>$('importFile').click());
 $('resetCareer').addEventListener('click',()=>{
  if(!window.confirm('Delete saved ranks, XP, medals and mission records on this device? This cannot be undone without an exported backup.'))return;
  career=fallbackProgress();difficulty='arcade';weather='clear';paintScheme='classic';
- for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions','graphicsQuality']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions='on';graphicsQuality='normal';coachCollapsed=false;timeOfDay='day';airfield='flanders';field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
+ for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions','graphicsQuality']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions='on';graphicsQuality='normal';coachCollapsed=false;timeOfDay='day';airfield='flanders';field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('app').dataset.graphics=graphicsQuality;$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;
  saveCareer();selectedMission=0;missionPending=true;choose(0);
  announce('Pilot career reset. Export a backup before resetting next time.');
 });
-$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions','graphicsQuality']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions=career.settings.trainingInstructions;graphicsQuality=career.settings.graphicsQuality;coachCollapsed=false;airfield=career.settings.airfield;field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
+$('importFile').addEventListener('change',async()=>{const file=$('importFile').files?.[0];if(!file)return;if(file.size>50000){announce('Save file is too large.');return}try{const parsed=JSON.parse(await file.text());if(parsed.version!==1)throw Error('Unsupported save format');career=cleanCareer(parsed);difficulty=career.settings.difficulty;weather=career.settings.weather;paintScheme=career.settings.livery;timeOfDay=career.settings.timeOfDay;for(const id of ['difficulty','weather','livery','airfield','timeOfDay','trainingInstructions','graphicsQuality']){const control=$(id);if(control)control.value=career.settings[id]}trainingInstructions=career.settings.trainingInstructions;graphicsQuality=career.settings.graphicsQuality;coachCollapsed=false;airfield=career.settings.airfield;field.destroy();worldObjects.destroy();field=makeField(airfield,graphicsQuality);worldObjects=makeWorldObjects(graphicsQuality);$('app').dataset.graphics=graphicsQuality;$('airfieldLabel').textContent=AIRFIELDS[airfield];$('app').dataset.weather=weather;saveCareer();setLivery();announce('Pilot career imported.')}catch{announce('Unable to import that pilot file.')}finally{$('importFile').value=''}});
 refreshCareer();
 let audioContext=null,engineOsc=null,engineGain=null,soundEnabled=false;
 function audioSetup(){if(audioContext)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=new C();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineGain.gain.value=0;engineOsc.connect(engineGain);engineGain.connect(audioContext.destination);engineOsc.start()}
