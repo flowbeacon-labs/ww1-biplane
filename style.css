@@ -132,3 +132,21 @@
 .heading-compass strong{font-size:11px;color:#fff4c5;letter-spacing:.025em}
 .heading-compass #compassDegrees{font-size:10px;color:#e4d4b9;font-variant-numeric:tabular-nums}
 @media(max-width:680px){.heading-compass{top:59px;right:6px;padding:4px 5px;min-width:64px}.compass-rose{width:52px;height:52px}.compass-rose .cardinal{font-size:10px}.compass-needle{font-size:20px}.heading-compass strong{font-size:9px}.heading-compass #compassDegrees{font-size:9px}}
+
+/* Universal circular flight joystick: on hybrid touchscreen laptops the primary
+   pointer is often a mouse, so (pointer:coarse) alone misses touch support.
+   Display the same control on desktop, tablet and phone, while keyboard still works. */
+#touch{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+#joyArea,#joyBase,#joyKnob{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+#joyArea:active,#joyArea:active #joyKnob{cursor:grabbing}
+#joyArea:focus-visible{outline:3px solid #f2d082;outline-offset:4px;border-radius:50%}
+@media(min-width:701px){
+ #touch{padding-bottom:6px;gap:20px}
+ #joyArea{flex:0 0 116px}
+ .help{bottom:152px;right:16px}
+ .flight-actions{bottom:157px}
+ .notice{max-width:min(590px,70%)}
+}
+@media(max-width:700px){
+ #touch{gap:5px}
+}
