@@ -13,7 +13,7 @@ function boot({missingIds=[]}={}) {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,missionLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v},setMissionIndex:(n)=>{missionIndex=n},setEnemyDefeated:(v)=>{enemyDefeated=v},getTraining:()=>trainingInstructions,compassHeading,bearingToCardinal,updateCompass,graphics:()=>({quality:graphicsQuality,terrainVertices:field.pos.length/3,sceneryVertices:worldObjects.pos.length/3,field,worldObjects})};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,missionLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v},setMissionIndex:(n)=>{missionIndex=n},setEnemyDefeated:(v)=>{enemyDefeated=v},getTraining:()=>trainingInstructions,compassHeading,bearingToCardinal,updateCompass,graphics:()=>({quality:graphicsQuality,terrainVertices:field.pos.length/3,sceneryVertices:worldObjects.pos.length/3,field,worldObjects}),memorial:()=>({site:WAR_MEMORIAL,flag:memorialFlag,country:planes[selected].country}),flagFor:makeMemorialFlag};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -449,4 +449,34 @@ test('Missing graphics dropdown in older cached HTML keeps safe Normal default',
  const {game}=boot({missingIds:['graphicsQuality']});
  assert.equal(game.graphics().quality,'normal');
  game.begin();game.render();
+});
+
+test('War memorial sits beyond the active runway and displays the chosen national flag',()=>{
+ const {game}=boot();
+ const site=game.memorial().site;
+ assert.equal(game.runwayAt(site.x,site.z),null);
+ assert.ok(Math.abs(site.x)>120,'Memorial must stay away from the center runway corridor');
+ assert.ok(site.flagHeight>12);
+ assert.equal(game.memorial().country,'United Kingdom');
+ const original=game.memorial().flag;
+ assert.ok(original.pos.length>100,'Flag should contain actual flag-colored geometry');
+ game.choose(1);
+ assert.equal(game.memorial().country,'Germany');
+ assert.notEqual(game.memorial().flag,original);
+ assert.ok(game.memorial().flag.pos.length>100);
+ game.render();
+});
+test('War memorial flag supports every aircraft country and both graphics modes',()=>{
+ const {game,element}=boot();
+ for(const country of [...new Set(game.planes.map(p=>p.country))]){
+  const flag=game.flagFor(country);
+  assert.ok(flag.pos.length>0,'No flag geometry for '+country);
+  assert.ok(flag.col.length>0);
+ }
+ element('graphicsQuality').value='low';element('graphicsQuality').events.change();
+ game.render();
+ assert.equal(game.memorial().country,'United Kingdom');
+ element('graphicsQuality').value='normal';element('graphicsQuality').events.change();
+ game.render();
+ assert.equal(game.memorial().country,'United Kingdom');
 });
