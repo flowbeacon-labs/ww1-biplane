@@ -36,3 +36,8 @@
 ## Initial Release
 - Seven WWI-inspired airplanes, procedural WebGL scene, grass runway, basic takeoff and landing and three camera options.
 - Corrected invisible aircraft caused by an invalid 3D cross product and off-target chase camera.
+
+## Mobile Touch Controls and Icon Update
+- Replaced flight-control text buttons with SVG icons and preserved VoiceOver labels.
+- Suppressed Safari callouts and text selection on flight controls without blocking ordinary form fields.
+- Preserved icons across sound, brake and statistics toggles; added unit and Chromium regression coverage.
