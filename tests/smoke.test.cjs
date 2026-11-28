@@ -13,7 +13,7 @@ function boot({missingIds=[]}={}) {
     'globalThis.__flightTest={planes,missions,career,begin,step,state,reset,render,finishMission,flightTick,takePhoto,shoot,setupMission,choose,',
     'setMission:(n)=>{selectedMission=n;setupMission()},',
     'status:()=>({grounded,crashed,missionIndex,missionStage,missionFinished,damage,bots}),',
-    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,missionLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v},setMissionIndex:(n)=>{missionIndex=n},setEnemyDefeated:(v)=>{enemyDefeated=v},getTraining:()=>trainingInstructions};',
+    'camera:()=>({camEye,camTarget}),viewMatrix,checkpoints,RUNWAYS,runwayAt,nearestRunway,touchdownIsHard,notifyLanding,lighting:()=>timeOfDay,landingLessonSnapshot,missionLessonSnapshot,setSoloStage:(n)=>{missionStage=n},setAirborne:(v)=>{grounded=!v;airborne=v},setMissionIndex:(n)=>{missionIndex=n},setEnemyDefeated:(v)=>{enemyDefeated=v},getTraining:()=>trainingInstructions,compassHeading,bearingToCardinal,updateCompass};',
     HOOK
   ].join(''));
   const elements = new Map();
@@ -379,4 +379,20 @@ test('Cached older HTML missing training selector does not prevent launch',()=>{
  game.begin();game.render();
  assert.equal(element('menu').hidden,true);
  assert.equal(element('landingCoach').hidden,false);
+});
+
+test('Cardinal compass uses north at zero, east at 90, south at 180, west at 270',()=>{
+ const {game,element}=boot();
+ for(const [angle,expected,degrees] of [[0,'NORTH','000°'],[Math.PI/2,'EAST','090°'],[Math.PI,'SOUTH','180°'],[-Math.PI/2,'WEST','270°']]){
+  game.state.yaw=angle;game.updateCompass();
+  assert.equal(element('directionalHeading').textContent,expected);
+  assert.equal(element('compassDegrees').textContent,degrees);
+  assert.equal(element('compassNeedle').style.transform,'rotate('+Number.parseInt(degrees,10)+'deg)');
+ }
+});
+test('Mission navigation instructions use named cardinal directions',()=>{
+ const {game}=boot();game.setMission(1);game.begin();game.setAirborne(true);
+ Object.assign(game.state,{x:0,y:90,z:0,yaw:0,speed:28});
+ const lesson=game.missionLessonSnapshot();
+ assert.match(lesson.instruction,/NORTH|SOUTH|EAST|WEST/);
 });
