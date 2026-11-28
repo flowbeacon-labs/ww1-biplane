@@ -499,7 +499,7 @@ for(const [id,k] of [['throttleUp','up'],['throttleDown','down']]){const el=$(id
 $('brake').addEventListener('click',()=>{brake=!brake;$('brake').classList.toggle('on',brake);$('brake').setAttribute('aria-pressed',String(brake))});
 // Prevent Safari's text selection/callout while holding actual flight controls.
 // Restrict suppression to game controls; menu selects and file import stay native.
-for(const surface of [$('touch'),document.querySelector('.flight-actions'),document.querySelector('.navigation-actions'),$('camera'),$('coachToggle')]){
+for(const surface of [$('touch'),$('camera'),$('coachToggle'),...document.querySelectorAll('.flight-actions, .navigation-actions')]){
  if(!surface)continue;
  surface.addEventListener('contextmenu',event=>event.preventDefault());
  surface.addEventListener('selectstart',event=>event.preventDefault());
