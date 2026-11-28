@@ -29,3 +29,21 @@ Repository: `flowbeacon-labs/ww1-biplane`. Production: GitHub Pages, static host
 
 ## Definition of done
 All previous functionality remains; added feature has relevant test; expected user path documented; no false claims of actual iPhone QA; deployment status verified.
+
+## Shared Flowbeacon Arcade mobile release policy — mandatory
+
+**Canonical project standard:** https://github.com/flowbeacon-labs/flowbeacon-arcade/blob/main/docs/GAME_QUALITY_STANDARD.md
+
+Before adding or changing controls, UI, game mechanics or graphics, **read that standard and treat it as a release gate**, not a suggestion. The main arcade's AGENTS.md is not inherited across repositories.
+
+### Regression risks to prevent every release
+
+1. **iPhone Safari long press:** Joystick, throttle +/- hold controls, bank controls, BRAKE, FIRE, PHOTO, camera, sound, pause, plane selection, statistics and tutorial toggles must not trigger context menus, text selection, callouts, link previews, page scroll or stuck inputs. Scope `-webkit-touch-callout:none`, `-webkit-user-select:none`, `user-select:none` and suitable `touch-action` to game controls only; use pointer events with scoped `contextmenu`/`selectstart` prevention. Do not suppress native input/select/link interactions globally.
+2. **Input cancellation:** Clear touch/keyboard states on pointerup, pointercancel, lostpointercapture, window blur and visibility change. Verify joystick + throttle simultaneously, long press >1.5 seconds, and orientation changes.
+3. **Safe UI:** On desktop and iPhone sizes 375/590/768/1280px, ensure no overlap of stats, coaching, mission panel, action buttons and controls. Respect safe-area insets. Preserve hideable HUD and back-to-plane-selection.
+4. **Icon integrity/accessibility:** Every icon-only button has an accessible name and finger-friendly hit target. Changing status must not replace/delete SVG artwork; change state attributes and labels instead.
+5. **WebGL launch:** Run actual browser startup after shader, matrix, camera or lighting modifications. Check shader compilation/linking, finite camera matrices, visible aircraft/strip, pause/resume/restart and browser-console errors. The past `uDusk` uniform precision bug made Start Flight inert despite mock tests.
+6. **Regression coverage:** Add a test reproducing any reported defect. Run `node --check game.js && npm test` and the Chromium browser launch workflow. Do not call mock-WebGL test results iPhone proof.
+7. **iPhone QA:** Physical iPhone Safari long-press and gesture verification must be reported as **not tested** if there is no device test. Confirm the *actual GitHub Pages deployment* before claiming the update is live.
+
+Preserve all aircraft, mission, career and save behavior described above. Do not replace working gameplay to accommodate a UI fix.
